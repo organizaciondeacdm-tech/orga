@@ -1,7 +1,12 @@
 import { Redis } from '@upstash/redis';
-import { getEscuelas, saveEscuelas } from '../../src/services/kvStorage';
+import { getEscuelas, saveEscuelas } from '../../src/services/kvStorage.backend.js';
 
-const redis = Redis.fromEnv();
+// Usar las variables con prefijo STORAGE_ (las que Vercel creó)
+const redis = new Redis({
+  url: process.env.STORAGE_KV_REST_API_URL,
+  token: process.env.STORAGE_KV_REST_API_TOKEN,
+});
+
 const KEYS = { ESCUELAS: 'acdm:escuelas' };
 
 export default async function handler(req, res) {

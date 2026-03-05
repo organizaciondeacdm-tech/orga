@@ -1,7 +1,7 @@
 import { 
   getEscuelas, 
   saveEscuelas 
-} from '../../src/services/kvStorage';
+} from '../../src/services/kvStorage.backend.js';
 
 export default async function handler(req, res) {
   // Configurar CORS

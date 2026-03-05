@@ -1,0 +1,16 @@
+import { Redis } from '@upstash/redis';
+
+// Configuración usando las variables que Vercel creó automáticamente
+const redisConfig = {
+  url: process.env.STORAGE_KV_REST_API_URL,
+  token: process.env.STORAGE_KV_REST_API_TOKEN,
+};
+
+// Verificar que las variables existen
+if (!redisConfig.url || !redisConfig.token) {
+  console.error('❌ Error: Variables de Redis no encontradas');
+  console.error('   STORAGE_KV_REST_API_URL:', !!process.env.STORAGE_KV_REST_API_URL);
+  console.error('   STORAGE_KV_REST_API_TOKEN:', !!process.env.STORAGE_KV_REST_API_TOKEN);
+}
+
+export const redis = new Redis(redisConfig);
