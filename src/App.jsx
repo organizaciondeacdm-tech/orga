@@ -1,9 +1,10 @@
 // Papiweb desarrollos informaticos 
-import { useState, useEffect } from "react";
+import { useEffect } from 'react';
 import { initializeKV } from './services/kvStorage';
+import { useState, useEffect, useCallback, useRef } from "react";
 
 // ============================================================
-// CRYPTO UTILS - Ya no se usan con Redis, pero los mantenemos
+// CRYPTO UTILS - Simple XOR + Base64 encryption for JSON DB
 // ============================================================
 const SECRET_KEY = "PAPIWEB_ACDM_2025_KEY";
 function xorEncrypt(text, key) {
@@ -23,6 +24,82 @@ function xorDecrypt(encoded, key) {
     return result;
   } catch { return null; }
 }
+function saveDB(data) {
+  const json = JSON.stringify(data);
+  localStorage.setItem("acdm_db", xorEncrypt(json, SECRET_KEY));
+}
+function loadDB() {
+  const enc = localStorage.getItem("acdm_db");
+  if (!enc) return null;
+  const dec = xorDecrypt(enc, SECRET_KEY);
+  if (!dec) return null;
+  try { return JSON.parse(dec); } catch { return null; }
+}
+
+// ============================================================
+// INITIAL DATA
+// ============================================================
+const INITIAL_DB = {
+  escuelas: [
+    {
+      id: "e1", de: "DE 01", escuela: "Escuela N°1 Julio Argentino Roca",
+      nivel: "Primario", direccion: "Av. Corrientes 1234, CABA",
+      lat: -34.6037, lng: -58.3816,
+      telefonos: ["011-4321-1234"], mail: "escuela1@bue.edu.ar",
+      jornada: "Completa", turno: "Mañana",
+      alumnos: [
+        { id: "a1", gradoSalaAnio: "3° Grado", nombre: "Martínez, Lucía", diagnostico: "TEA Nivel 1", observaciones: "Requiere acompañante en recreos" },
+        { id: "a2", gradoSalaAnio: "3° Grado", nombre: "García, Tomás", diagnostico: "TDAH", observaciones: "Medicación en horario escolar" },
+      ],
+      docentes: [
+        {
+          id: "d1", cargo: "Titular", nombreApellido: "López, María Elena",
+          estado: "Licencia", motivo: "Art. 102 - Enfermedad",
+          diasAutorizados: 30, fechaInicioLicencia: "2025-01-15", fechaFinLicencia: "2025-02-14",
+          suplentes: [
+            { id: "s1", cargo: "Suplente", nombreApellido: "Fernández, Ana Clara", estado: "Activo", motivo: "-", fechaIngreso: "2025-01-15" }
+          ]
+        },
+        {
+          id: "d2", cargo: "Titular", nombreApellido: "Rodríguez, Carlos",
+          estado: "Activo", motivo: "-", diasAutorizados: 0,
+          fechaInicioLicencia: null, fechaFinLicencia: null, suplentes: []
+        }
+      ]
+    },
+    {
+      id: "e2", de: "DE 02", escuela: "Jardín de Infantes N°5 María Montessori",
+      nivel: "Inicial", direccion: "Av. Santa Fe 567, CABA",
+      lat: -34.5958, lng: -58.3975,
+      telefonos: ["011-4765-5678", "011-4765-5679"], mail: "jardin5@bue.edu.ar",
+      jornada: "Simple", turno: "Tarde",
+      alumnos: [
+        { id: "a3", gradoSalaAnio: "Sala Roja", nombre: "Pérez, Santiago", diagnostico: "Síndrome de Down", observaciones: "Integración escolar plena" }
+      ],
+      docentes: [
+        {
+          id: "d3", cargo: "Titular", nombreApellido: "Gómez, Patricia",
+          estado: "Activo", motivo: "-", diasAutorizados: 0,
+          fechaInicioLicencia: null, fechaFinLicencia: null, suplentes: []
+        }
+      ]
+    },
+    {
+      id: "e3", de: "DE 03", escuela: "Escuela Secundaria N°12 Domingo F. Sarmiento",
+      nivel: "Secundario", direccion: "Calle Rivadavia 890, CABA",
+      lat: -34.6158, lng: -58.4053,
+      telefonos: ["011-4987-9012"], mail: "secundaria12@bue.edu.ar",
+      jornada: "Completa", turno: "Mañana",
+      alumnos: [],
+      docentes: []
+    }
+  ],
+  usuarios: [
+    { id: "u1", username: "admin", passwordHash: btoa("admin2025"), rol: "admin" },
+    { id: "u2", username: "viewer", passwordHash: btoa("viewer123"), rol: "viewer" }
+  ],
+  alertasLeidas: []
+};
 
 // ============================================================
 // DATE UTILS
@@ -45,11 +122,6 @@ function getDaysInMonth(year, month) {
 function getFirstDayOfMonth(year, month) {
   return new Date(year, month, 1).getDay();
 }
-
-// ============================================================
-// STYLES (mantenemos el mismo STYLES que ya tenés)
-// ============================================================
-const STYLES = `/* tu mismo CSS de siempre */`;
 
 // ============================================================
 // CALENDAR COMPONENT
@@ -114,7 +186,7 @@ function MiniCalendar({ year, month, rangeStart, rangeEnd, onNavigate }) {
 // ============================================================
 // DAYS REMAINING BADGE
 // ============================================================
-function DaysRemaining({ fechaFin }) {
+function DaysRemaining({ fechaFin, diasAutorizados, fechaInicio }) {
   if (!fechaFin) return null;
   const dias = diasRestantes(fechaFin);
   const cls = dias <= 0 ? "days-danger" : dias <= 5 ? "days-danger" : dias <= 10 ? "days-warn" : "days-ok";
@@ -133,10 +205,11 @@ function AlertPanel({ escuelas }) {
   const alerts = [];
   
   escuelas.forEach(esc => {
-    if (esc.docentes?.length === 0) {
+    // Schools without ACDM
+    if (esc.docentes.length === 0) {
       alerts.push({ type: "danger", icon: "🏫", title: `Sin ACDM asignado`, desc: `${esc.escuela} (${esc.de}) no tiene docente asignado.`, school: esc.escuela });
     }
-    esc.docentes?.forEach(doc => {
+    esc.docentes.forEach(doc => {
       if (doc.estado === "Licencia" && doc.fechaFinLicencia) {
         const dias = diasRestantes(doc.fechaFinLicencia);
         if (dias <= 0) {
@@ -148,7 +221,8 @@ function AlertPanel({ escuelas }) {
         }
       }
     });
-    if (esc.alumnos?.length === 0 && esc.docentes?.length > 0) {
+    // Schools without students
+    if (esc.alumnos.length === 0 && esc.docentes.length > 0) {
       alerts.push({ type: "info", icon: "👤", title: "Sin alumnos registrados", desc: `${esc.escuela} no tiene alumnos cargados en el sistema.`, school: esc.escuela });
     }
   });
@@ -174,12 +248,12 @@ function AlertPanel({ escuelas }) {
 // ============================================================
 function Statistics({ escuelas }) {
   const totalEsc = escuelas.length;
-  const totalAlumnos = escuelas.reduce((a, e) => a + (e.alumnos?.length || 0), 0);
-  const totalDocentes = escuelas.reduce((a, e) => a + (e.docentes?.length || 0), 0);
-  const docentesLicencia = escuelas.reduce((a, e) => a + (e.docentes?.filter(d => d.estado === "Licencia").length || 0), 0);
+  const totalAlumnos = escuelas.reduce((a, e) => a + e.alumnos.length, 0);
+  const totalDocentes = escuelas.reduce((a, e) => a + e.docentes.length, 0);
+  const docentesLicencia = escuelas.reduce((a, e) => a + e.docentes.filter(d => d.estado === "Licencia").length, 0);
   const docentesActivos = totalDocentes - docentesLicencia;
-  const sinAcdm = escuelas.filter(e => e.docentes?.length === 0).length;
-  const totalSuplentes = escuelas.reduce((a, e) => a + (e.docentes?.reduce((b, d) => b + (d.suplentes?.length || 0), 0) || 0), 0);
+  const sinAcdm = escuelas.filter(e => e.docentes.length === 0).length;
+  const totalSuplentes = escuelas.reduce((a, e) => a + e.docentes.reduce((b, d) => b + d.suplentes.length, 0), 0);
   
   const byNivel = {};
   escuelas.forEach(e => { byNivel[e.nivel] = (byNivel[e.nivel] || 0) + 1; });
@@ -269,7 +343,7 @@ function Statistics({ escuelas }) {
 }
 
 // ============================================================
-// MODAL COMPONENTS (se mantienen igual)
+// DOCENTE FORM MODAL
 // ============================================================
 function DocenteModal({ docente, titularId, isNew, onSave, onClose }) {
   const [form, setForm] = useState(docente || {
@@ -356,6 +430,9 @@ function DocenteModal({ docente, titularId, isNew, onSave, onClose }) {
   );
 }
 
+// ============================================================
+// ALUMNO FORM MODAL
+// ============================================================
 function AlumnoModal({ alumno, isNew, onSave, onClose }) {
   const [form, setForm] = useState(alumno || { id: `a${Date.now()}`, gradoSalaAnio: "", nombre: "", diagnostico: "", observaciones: "" });
   return (
@@ -392,6 +469,9 @@ function AlumnoModal({ alumno, isNew, onSave, onClose }) {
   );
 }
 
+// ============================================================
+// SCHOOL FORM MODAL
+// ============================================================
 function EscuelaModal({ escuela, isNew, onSave, onClose }) {
   const [form, setForm] = useState(escuela || {
     id: `e${Date.now()}`, de: "", escuela: "", nivel: "Primario",
@@ -478,7 +558,7 @@ function EscuelaModal({ escuela, isNew, onSave, onClose }) {
 }
 
 // ============================================================
-// SCHOOL DETAIL VIEW (simplificado por espacio)
+// SCHOOL DETAIL VIEW
 // ============================================================
 function EscuelaDetail({ esc, onEdit, onAddDocente, onEditDocente, onDeleteDocente, onAddAlumno, onEditAlumno, onDeleteAlumno, viewMode, isAdmin }) {
   const [expanded, setExpanded] = useState(false);
@@ -492,7 +572,7 @@ function EscuelaDetail({ esc, onEdit, onAddDocente, onEditDocente, onDeleteDocen
     setCalMonth(m); setCalYear(y);
   }
   
-  const hasAlerts = esc.docentes?.length === 0 || esc.docentes?.some(d => d.estado === "Licencia" && d.fechaFinLicencia && diasRestantes(d.fechaFinLicencia) <= 10);
+  const hasAlerts = esc.docentes.length === 0 || esc.docentes.some(d => d.estado === "Licencia" && d.fechaFinLicencia && diasRestantes(d.fechaFinLicencia) <= 10);
 
   const openMaps = (e) => {
     e.stopPropagation();
@@ -506,6 +586,58 @@ function EscuelaDetail({ esc, onEdit, onAddDocente, onEditDocente, onDeleteDocen
     window.open(`mailto:${mailAddr}?subject=${subject}`, "_blank");
   };
 
+  if (viewMode === "compact") {
+    return (
+      <div className="school-card">
+        <div className="school-card-header" onClick={() => setExpanded(!expanded)}>
+          <div className="flex items-center justify-between flex-wrap gap-8">
+            <div>
+              <div className="school-de">{esc.de}</div>
+              <div className="school-name">{esc.escuela}</div>
+              <div className="school-meta">
+                <span className="school-meta-item">📍 {esc.direccion}</span>
+                <span className="school-meta-item">📚 {esc.nivel}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-8">
+              {hasAlerts && <span style={{animation:'pulse 1s infinite', fontSize:18}}>⚠️</span>}
+              <span style={{color:'var(--text3)', fontSize:20}}>{expanded ? "▲" : "▼"}</span>
+            </div>
+          </div>
+          
+          {/* Compact view: show titular, suplente, motivo */}
+          <div style={{marginTop:12}}>
+            {esc.docentes.length === 0 ? (
+              <span className="badge badge-danger">SIN ACDM ASIGNADO</span>
+            ) : esc.docentes.map(doc => (
+              <div key={doc.id} style={{marginBottom:8}}>
+                <div className="flex items-center gap-8 flex-wrap">
+                  <span className={`badge badge-${doc.cargo.toLowerCase()}`}>{doc.cargo}</span>
+                  <span style={{fontFamily:'Rajdhani', fontWeight:700, fontSize:15}}>{doc.nombreApellido}</span>
+                  <span className={`badge badge-${doc.estado === "Activo" ? "active" : "licencia"}`}>{doc.estado}</span>
+                  {doc.estado === "Licencia" && <span style={{fontSize:12, color:'var(--text2)'}}>{doc.motivo}</span>}
+                  {doc.estado === "Licencia" && <DaysRemaining fechaFin={doc.fechaFinLicencia} />}
+                </div>
+                {doc.suplentes.map(s => (
+                  <div key={s.id} className="flex items-center gap-8 flex-wrap" style={{marginLeft:20, marginTop:4}}>
+                    <span style={{color:'var(--yellow)', fontSize:12}}>↳</span>
+                    <span className="badge badge-suplente">{s.cargo}</span>
+                    <span style={{fontSize:13, color:'var(--text2)'}}>{s.nombreApellido}</span>
+                    {doc.estado === "Licencia" && doc.fechaInicioLicencia && (
+                      <span style={{fontSize:11, color:'var(--text3)'}}>desde {formatDate(doc.fechaInicioLicencia)}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {expanded && <EscuelaExpandida esc={esc} onEdit={onEdit} onAddDocente={onAddDocente} onEditDocente={onEditDocente} onDeleteDocente={onDeleteDocente} onAddAlumno={onAddAlumno} onEditAlumno={onEditAlumno} onDeleteAlumno={onDeleteAlumno} calYear={calYear} calMonth={calMonth} navCal={navCal} activeTab={activeTab} setActiveTab={setActiveTab} openMaps={openMaps} openMail={openMail} isAdmin={isAdmin} />}
+      </div>
+    );
+  }
+  
   return (
     <div className="school-card">
       <div className="school-card-header" onClick={() => setExpanded(!expanded)}>
@@ -524,127 +656,139 @@ function EscuelaDetail({ esc, onEdit, onAddDocente, onEditDocente, onDeleteDocen
           <span className="school-meta-item">⏱ {esc.jornada}</span>
           <span className="school-meta-item">🌅 {esc.turno}</span>
           <span className="school-meta-item clickable" onClick={openMaps}>📍 {esc.direccion}</span>
-          {esc.telefonos?.map((t, i) => <span key={i} className="school-meta-item">📞 {t}</span>)}
+          {esc.telefonos.map((t, i) => <span key={i} className="school-meta-item">📞 {t}</span>)}
           <span className="school-meta-item link" onClick={(e) => openMail(esc.mail, e)}>✉️ {esc.mail}</span>
         </div>
       </div>
-      {expanded && (
-        <div className="school-card-body">
-          <div className="flex items-center justify-between mb-16">
-            <div className="view-toggle">
-              <button className={`view-btn ${activeTab === "docentes" ? "active" : ""}`} onClick={() => setActiveTab("docentes")}>👨‍🏫 Docentes</button>
-              <button className={`view-btn ${activeTab === "alumnos" ? "active" : ""}`} onClick={() => setActiveTab("alumnos")}>👨‍🎓 Alumnos</button>
-              <button className={`view-btn ${activeTab === "info" ? "active" : ""}`} onClick={() => setActiveTab("info")}>ℹ️ Info</button>
-            </div>
-            <div className="flex gap-8">
-              {isAdmin && <button className="btn btn-secondary btn-sm" onClick={onEdit}>✏️ Editar</button>}
-              {isAdmin && activeTab === "docentes" && <button className="btn btn-primary btn-sm" onClick={() => onAddDocente(esc.id)}>+ ACDM</button>}
-              {isAdmin && activeTab === "alumnos" && <button className="btn btn-primary btn-sm" onClick={() => onAddAlumno(esc.id)}>+ Alumno</button>}
-            </div>
-          </div>
-          
-          {activeTab === "docentes" && (
-            <div>
-              {!esc.docentes?.length && <div className="no-data">⚠️ Sin docentes asignados</div>}
-              {esc.docentes?.map(doc => (
-                <div key={doc.id}>
-                  <div className="docente-row">
-                    <div className="docente-header">
-                      <span className={`badge badge-${doc.cargo?.toLowerCase()}`}>{doc.cargo}</span>
-                      <span className="docente-name">{doc.nombreApellido}</span>
-                      <span className={`badge badge-${doc.estado === "Activo" ? "active" : "licencia"}`}>{doc.estado}</span>
-                      {doc.estado === "Licencia" && <DaysRemaining fechaFin={doc.fechaFinLicencia} />}
-                      {isAdmin && (
-                        <div className="flex gap-4" style={{marginLeft:'auto'}}>
-                          <button className="btn btn-secondary btn-sm" onClick={() => onEditDocente(esc.id, doc)}>✏️</button>
-                          <button className="btn btn-danger btn-sm" onClick={() => onDeleteDocente(esc.id, doc.id)}>🗑️</button>
-                          {doc.cargo === "Titular" && <button className="btn btn-secondary btn-sm" onClick={() => onAddDocente(esc.id, doc.id)}>+ Suplente</button>}
-                        </div>
-                      )}
+      {expanded && <EscuelaExpandida esc={esc} onEdit={onEdit} onAddDocente={onAddDocente} onEditDocente={onEditDocente} onDeleteDocente={onDeleteDocente} onAddAlumno={onAddAlumno} onEditAlumno={onEditAlumno} onDeleteAlumno={onDeleteAlumno} calYear={calYear} calMonth={calMonth} navCal={navCal} activeTab={activeTab} setActiveTab={setActiveTab} openMaps={openMaps} openMail={openMail} isAdmin={isAdmin} />}
+    </div>
+  );
+}
+
+function EscuelaExpandida({ esc, onEdit, onAddDocente, onEditDocente, onDeleteDocente, onAddAlumno, onEditAlumno, onDeleteAlumno, calYear, calMonth, navCal, activeTab, setActiveTab, openMaps, openMail, isAdmin }) {
+  return (
+    <div className="school-card-body" style={{animation:'slideIn 0.2s ease'}}>
+      <div className="flex items-center justify-between mb-16">
+        <div className="view-toggle">
+          <button className={`view-btn ${activeTab === "docentes" ? "active" : ""}`} onClick={() => setActiveTab("docentes")}>👨‍🏫 Docentes</button>
+          <button className={`view-btn ${activeTab === "alumnos" ? "active" : ""}`} onClick={() => setActiveTab("alumnos")}>👨‍🎓 Alumnos</button>
+          <button className={`view-btn ${activeTab === "info" ? "active" : ""}`} onClick={() => setActiveTab("info")}>ℹ️ Info</button>
+        </div>
+        <div className="flex gap-8">
+          {isAdmin && <button className="btn btn-secondary btn-sm" onClick={onEdit}>✏️ Editar</button>}
+          {isAdmin && activeTab === "docentes" && <button className="btn btn-primary btn-sm" onClick={() => onAddDocente(esc.id)}>+ ACDM</button>}
+          {isAdmin && activeTab === "alumnos" && <button className="btn btn-primary btn-sm" onClick={() => onAddAlumno(esc.id)}>+ Alumno</button>}
+        </div>
+      </div>
+      
+      {activeTab === "docentes" && (
+        <div>
+          {esc.docentes.length === 0 && <div className="no-data">⚠️ Sin docentes asignados</div>}
+          {esc.docentes.map(doc => (
+            <div key={doc.id}>
+              <div className="docente-row">
+                <div className="docente-header">
+                  <span className={`badge badge-${doc.cargo.toLowerCase()}`}>{doc.cargo}</span>
+                  <span className="docente-name">{doc.nombreApellido}</span>
+                  <span className={`badge badge-${doc.estado === "Activo" ? "active" : "licencia"}`}>{doc.estado}</span>
+                  {doc.estado === "Licencia" && <DaysRemaining fechaFin={doc.fechaFinLicencia} />}
+                  {isAdmin && (
+                    <div className="flex gap-4" style={{marginLeft:'auto'}}>
+                      <button className="btn btn-secondary btn-sm" onClick={() => onEditDocente(esc.id, doc)}>✏️</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => onDeleteDocente(esc.id, doc.id)}>🗑️</button>
+                      {doc.cargo === "Titular" && <button className="btn btn-secondary btn-sm" onClick={() => onAddDocente(esc.id, doc.id)}>+ Suplente</button>}
                     </div>
-                    {doc.estado === "Licencia" && (
-                      <div className="docente-details mt-8">
-                        <div className="detail-item"><div className="detail-label">Motivo</div><div className="detail-val">{doc.motivo}</div></div>
-                        <div className="detail-item"><div className="detail-label">Días Autorizados</div><div className="detail-val">{doc.diasAutorizados} días</div></div>
-                        <div className="detail-item"><div className="detail-label">Inicio</div><div className="detail-val">{formatDate(doc.fechaInicioLicencia)}</div></div>
-                        <div className="detail-item"><div className="detail-label">Fin</div><div className="detail-val">{formatDate(doc.fechaFinLicencia)}</div></div>
+                  )}
+                </div>
+                {doc.estado === "Licencia" && (
+                  <div className="docente-details mt-8">
+                    <div className="detail-item"><div className="detail-label">Motivo</div><div className="detail-val">{doc.motivo}</div></div>
+                    <div className="detail-item"><div className="detail-label">Días Autorizados</div><div className="detail-val">{doc.diasAutorizados} días</div></div>
+                    <div className="detail-item"><div className="detail-label">Inicio</div><div className="detail-val">{formatDate(doc.fechaInicioLicencia)}</div></div>
+                    <div className="detail-item"><div className="detail-label">Fin</div><div className="detail-val">{formatDate(doc.fechaFinLicencia)}</div></div>
+                  </div>
+                )}
+                {doc.estado === "Licencia" && (doc.fechaInicioLicencia || doc.fechaFinLicencia) && (
+                  <div className="mt-8">
+                    <MiniCalendar year={calYear} month={calMonth} rangeStart={doc.fechaInicioLicencia} rangeEnd={doc.fechaFinLicencia} onNavigate={navCal} />
+                  </div>
+                )}
+              </div>
+              {doc.suplentes && doc.suplentes.map(s => (
+                <div key={s.id} className="docente-row suplente-row">
+                  <div className="docente-header">
+                    <span style={{fontSize:12, color:'var(--yellow)'}}>↳ Cubre a: <strong>{doc.nombreApellido}</strong></span>
+                    <span className={`badge badge-${s.cargo.toLowerCase()}`}>{s.cargo}</span>
+                    <span className="docente-name">{s.nombreApellido}</span>
+                    <span className={`badge badge-${s.estado === "Activo" ? "active" : "licencia"}`}>{s.estado}</span>
+                    {s.fechaIngreso && <span style={{fontSize:11, color:'var(--text3)'}}>desde {formatDate(s.fechaIngreso)}</span>}
+                    {isAdmin && (
+                      <div className="flex gap-4" style={{marginLeft:'auto'}}>
+                        <button className="btn btn-secondary btn-sm" onClick={() => onEditDocente(esc.id, s, doc.id)}>✏️</button>
+                        <button className="btn btn-danger btn-sm" onClick={() => onDeleteDocente(esc.id, s.id, doc.id)}>🗑️</button>
                       </div>
                     )}
                   </div>
-                  {doc.suplentes?.map(s => (
-                    <div key={s.id} className="docente-row suplente-row">
-                      <div className="docente-header">
-                        <span style={{fontSize:12, color:'var(--yellow)'}}>↳ Cubre a: <strong>{doc.nombreApellido}</strong></span>
-                        <span className={`badge badge-${s.cargo?.toLowerCase()}`}>{s.cargo}</span>
-                        <span className="docente-name">{s.nombreApellido}</span>
-                        <span className={`badge badge-${s.estado === "Activo" ? "active" : "licencia"}`}>{s.estado}</span>
-                        {s.fechaIngreso && <span style={{fontSize:11, color:'var(--text3)'}}>desde {formatDate(s.fechaIngreso)}</span>}
-                        {isAdmin && (
-                          <div className="flex gap-4" style={{marginLeft:'auto'}}>
-                            <button className="btn btn-secondary btn-sm" onClick={() => onEditDocente(esc.id, s, doc.id)}>✏️</button>
-                            <button className="btn btn-danger btn-sm" onClick={() => onDeleteDocente(esc.id, s.id, doc.id)}>🗑️</button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                  {s.motivo && s.motivo !== "-" && (
+                    <div className="detail-item mt-8"><div className="detail-label">Motivo</div><div className="detail-val">{s.motivo}</div></div>
+                  )}
                 </div>
               ))}
             </div>
+          ))}
+        </div>
+      )}
+      
+      {activeTab === "alumnos" && (
+        <div className="table-wrap">
+          {esc.alumnos.length === 0 ? <div className="no-data">Sin alumnos registrados</div> : (
+            <table>
+              <thead><tr><th>Grado/Sala</th><th>Alumno</th><th>Diagnóstico</th><th>Observaciones</th>{isAdmin && <th>Acciones</th>}</tr></thead>
+              <tbody>
+                {esc.alumnos.map(a => (
+                  <tr key={a.id}>
+                    <td><span className="badge badge-info" style={{background:'rgba(0,212,255,0.1)', color:'var(--accent)', border:'1px solid rgba(0,212,255,0.2)'}}>{a.gradoSalaAnio}</span></td>
+                    <td style={{fontWeight:600}}>{a.nombre}</td>
+                    <td><span style={{color:'var(--yellow)', fontSize:12}}>{a.diagnostico}</span></td>
+                    <td style={{color:'var(--text2)', fontSize:12, maxWidth:200}}>{a.observaciones}</td>
+                    {isAdmin && <td><div className="flex gap-4">
+                      <button className="btn btn-secondary btn-sm" onClick={() => onEditAlumno(esc.id, a)}>✏️</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => onDeleteAlumno(esc.id, a.id)}>🗑️</button>
+                    </div></td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
-          
-          {activeTab === "alumnos" && (
-            <div className="table-wrap">
-              {!esc.alumnos?.length ? <div className="no-data">Sin alumnos registrados</div> : (
-                <table>
-                  <thead><tr><th>Grado/Sala</th><th>Alumno</th><th>Diagnóstico</th><th>Observaciones</th>{isAdmin && <th>Acciones</th>}</tr></thead>
-                  <tbody>
-                    {esc.alumnos.map(a => (
-                      <tr key={a.id}>
-                        <td><span className="badge badge-info" style={{background:'rgba(0,212,255,0.1)', color:'var(--accent)', border:'1px solid rgba(0,212,255,0.2)'}}>{a.gradoSalaAnio}</span></td>
-                        <td style={{fontWeight:600}}>{a.nombre}</td>
-                        <td><span style={{color:'var(--yellow)', fontSize:12}}>{a.diagnostico}</span></td>
-                        <td style={{color:'var(--text2)', fontSize:12, maxWidth:200}}>{a.observaciones}</td>
-                        {isAdmin && <td><div className="flex gap-4">
-                          <button className="btn btn-secondary btn-sm" onClick={() => onEditAlumno(esc.id, a)}>✏️</button>
-                          <button className="btn btn-danger btn-sm" onClick={() => onDeleteAlumno(esc.id, a.id)}>🗑️</button>
-                        </div></td>}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          )}
-          
-          {activeTab === "info" && (
-            <div className="school-info-grid">
-              <div>
-                <div className="school-info-label">Dirección</div>
-                <div className="school-info-val link" onClick={openMaps}>📍 {esc.direccion}</div>
-              </div>
-              <div>
-                <div className="school-info-label">Mail</div>
-                <div className="school-info-val link" onClick={(e) => openMail(esc.mail, e)}>✉️ {esc.mail}</div>
-              </div>
-              <div>
-                <div className="school-info-label">Teléfonos</div>
-                <div className="school-info-val">{esc.telefonos?.join(" | ")}</div>
-              </div>
-              <div>
-                <div className="school-info-label">Jornada / Turno</div>
-                <div className="school-info-val">{esc.jornada} — {esc.turno}</div>
-              </div>
-              <div>
-                <div className="school-info-label">Nivel</div>
-                <div className="school-info-val">{esc.nivel}</div>
-              </div>
-              <div>
-                <div className="school-info-label">Distrito Escolar</div>
-                <div className="school-info-val">{esc.de}</div>
-              </div>
-            </div>
-          )}
+        </div>
+      )}
+      
+      {activeTab === "info" && (
+        <div className="school-info-grid">
+          <div>
+            <div className="school-info-label">Dirección</div>
+            <div className="school-info-val link" onClick={openMaps}>📍 {esc.direccion}</div>
+          </div>
+          <div>
+            <div className="school-info-label">Mail</div>
+            <div className="school-info-val link" onClick={(e) => openMail(esc.mail, e)}>✉️ {esc.mail}</div>
+          </div>
+          <div>
+            <div className="school-info-label">Teléfonos</div>
+            <div className="school-info-val">{esc.telefonos.join(" | ")}</div>
+          </div>
+          <div>
+            <div className="school-info-label">Jornada / Turno</div>
+            <div className="school-info-val">{esc.jornada} — {esc.turno}</div>
+          </div>
+          <div>
+            <div className="school-info-label">Nivel</div>
+            <div className="school-info-val">{esc.nivel}</div>
+          </div>
+          <div>
+            <div className="school-info-label">Distrito Escolar</div>
+            <div className="school-info-val">{esc.de}</div>
+          </div>
         </div>
       )}
     </div>
@@ -669,15 +813,15 @@ function ExportPDF({ escuelas, onClose }) {
       lines.push(`\n${esc.de} | ${esc.escuela}`);
       lines.push(`Nivel: ${esc.nivel} | Jornada: ${esc.jornada} | Turno: ${esc.turno}`);
       lines.push(`Dirección: ${esc.direccion}`);
-      lines.push(`Mail: ${esc.mail} | Tel: ${esc.telefonos?.join(", ")}`);
+      lines.push(`Mail: ${esc.mail} | Tel: ${esc.telefonos.join(", ")}`);
       if (tipo !== "mini") {
-        lines.push(`\n  DOCENTES (${esc.docentes?.length || 0}):`);
-        esc.docentes?.forEach(d => {
+        lines.push(`\n  DOCENTES (${esc.docentes.length}):`);
+        esc.docentes.forEach(d => {
           lines.push(`  - [${d.cargo}] ${d.nombreApellido} — ${d.estado}${d.estado === "Licencia" ? ` (${d.motivo}, hasta ${formatDate(d.fechaFinLicencia)})` : ""}`);
-          d.suplentes?.forEach(s => lines.push(`      ↳ [${s.cargo}] ${s.nombreApellido} — ${s.estado}`));
+          d.suplentes.forEach(s => lines.push(`      ↳ [${s.cargo}] ${s.nombreApellido} — ${s.estado}`));
         });
-        lines.push(`\n  ALUMNOS (${esc.alumnos?.length || 0}):`);
-        esc.alumnos?.forEach(a => lines.push(`  - ${a.gradoSalaAnio}: ${a.nombre} — ${a.diagnostico}`));
+        lines.push(`\n  ALUMNOS (${esc.alumnos.length}):`);
+        esc.alumnos.forEach(a => lines.push(`  - ${a.gradoSalaAnio}: ${a.nombre} — ${a.diagnostico}`));
       }
       lines.push("─".repeat(60));
     });
@@ -717,6 +861,7 @@ function ExportPDF({ escuelas, onClose }) {
           </div>
         </div>
         
+        {/* Preview */}
         <div className="pdf-preview">
           <div className="pdf-header">
             <div className="pdf-title">Sistema ACDM — Reporte {tipo}</div>
@@ -726,7 +871,7 @@ function ExportPDF({ escuelas, onClose }) {
             <div key={esc.id} style={{marginBottom:12, paddingBottom:8, borderBottom:'1px solid #ddd'}}>
               <div style={{fontWeight:700, color:'#0066aa'}}>{esc.de} — {esc.escuela}</div>
               <div style={{fontSize:11, color:'#444'}}>{esc.nivel} | {esc.jornada} | {esc.turno} | {esc.mail}</div>
-              {tipo !== "mini" && esc.docentes?.map(d => (
+              {tipo !== "mini" && esc.docentes.map(d => (
                 <div key={d.id} style={{marginLeft:12, marginTop:4, fontSize:11}}>
                   <span style={{fontWeight:700}}>[{d.cargo}]</span> {d.nombreApellido} — <span style={{color: d.estado === "Activo" ? "green" : "red"}}>{d.estado}</span>
                   {d.estado === "Licencia" && <span style={{color:'#888'}}> · {d.motivo} hasta {formatDate(d.fechaFinLicencia)}</span>}
@@ -738,7 +883,7 @@ function ExportPDF({ escuelas, onClose }) {
         
         <div className="flex gap-8 justify-end mt-16">
           <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
-          <button className="btn btn-primary" onClick={doExport}>⬇️ Exportar TXT</button>
+          <button className="btn btn-primary" onClick={doExport}>⬇️ Exportar TXT/PDF</button>
         </div>
       </div>
     </div>
@@ -753,11 +898,11 @@ function Login({ onLogin }) {
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
   
-  async function doLogin() {
-    const success = await onLogin(user, pass);
-    if (!success) {
-      setErr("Credenciales incorrectas");
-    }
+  function doLogin() {
+    const db = loadDB() || INITIAL_DB;
+    const found = db.usuarios.find(u => u.username === user && u.passwordHash === btoa(pass));
+    if (found) { onLogin(found); setErr(""); }
+    else setErr("Credenciales incorrectas");
   }
   
   return (
@@ -784,11 +929,333 @@ function Login({ onLogin }) {
         {err && <div className="alert alert-danger" style={{marginBottom:12}}><span>⚠️</span>{err}</div>}
         <button className="btn btn-primary" style={{width:'100%', justifyContent:'center', marginTop:8}} onClick={doLogin}>Ingresar →</button>
         <div className="hint-text">
-          Demo: <span className="hint-key">admin</span> / <span className="hint-key">admin2025</span>
-          <br/>Acceso rápido: <span className="hint-key">Ctrl+Alt+A</span>
+          // Demo: <span className="hint-key">Papiweb</span> / <span className="hint-key">admin2025</span>
+          // </br/>Acceso rápido: <span className="hint-key">ContionA</span>
         </div>
       </div>
     </div>
+  );
+}
+
+// ============================================================
+// MAIN APP
+// ============================================================
+export default function App() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [db, setDB] = useState(() => loadDB() || INITIAL_DB);
+  const [activeSection, setActiveSection] = useState("dashboard");
+  const [viewMode, setViewMode] = useState("full"); // full | compact | table
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showExport, setShowExport] = useState(false);
+  
+  // Modals
+  const [escuelaModal, setEscuelaModal] = useState(null);
+  const [docenteModal, setDocenteModal] = useState(null);
+  const [alumnoModal, setAlumnoModal] = useState(null);
+  const [addDocenteTarget, setAddDocenteTarget] = useState(null); // {escuelaId, titularId?}
+  const [addAlumnoTarget, setAddAlumnoTarget] = useState(null); // escuelaId
+  
+  const isAdmin = currentUser?.rol === "admin";
+  
+  // Persist on change
+  useEffect(() => { if (currentUser) saveDB(db); }, [db]);
+  
+  // Keyboard shortcut: Ctrl+Alt+A = admin login
+  useEffect(() => {
+    function handler(e) {
+      if (e.ctrlKey && e.altKey && e.key === "a") {
+        const db2 = loadDB() || INITIAL_DB;
+        const admin = db2.usuarios.find(u => u.rol === "admin");
+        if (admin) setCurrentUser(admin);
+      }
+      if (e.ctrlKey && e.key === "f") { e.preventDefault(); document.querySelector(".search-main")?.focus(); }
+      if (e.ctrlKey && e.key === "e" && isAdmin) setShowExport(true);
+    }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isAdmin]);
+  
+  // DB operations
+  function updateEscuelas(updater) {
+    setDB(prev => { const next = {...prev, escuelas: updater(prev.escuelas)}; return next; });
+  }
+  
+  function saveEscuela(form) {
+    updateEscuelas(escuelas => {
+      const idx = escuelas.findIndex(e => e.id === form.id);
+      if (idx >= 0) { const a = [...escuelas]; a[idx] = {...a[idx], ...form}; return a; }
+      return [...escuelas, form];
+    });
+  }
+  
+  function deleteEscuela(id) {
+    if (!confirm("¿Eliminar escuela?")) return;
+    updateEscuelas(esc => esc.filter(e => e.id !== id));
+  }
+  
+  function addDocente(escuelaId, docForm, titularId) {
+    updateEscuelas(escuelas => escuelas.map(esc => {
+      if (esc.id !== escuelaId) return esc;
+      if (titularId) {
+        // Add as suplente to titular
+        return { ...esc, docentes: esc.docentes.map(d => d.id === titularId ? { ...d, suplentes: [...(d.suplentes||[]), docForm] } : d) };
+      }
+      return { ...esc, docentes: [...esc.docentes, { ...docForm, suplentes: docForm.suplentes || [] }] };
+    }));
+  }
+  
+  function updateDocente(escuelaId, docForm, titularId) {
+    updateEscuelas(escuelas => escuelas.map(esc => {
+      if (esc.id !== escuelaId) return esc;
+      if (titularId) {
+        return { ...esc, docentes: esc.docentes.map(d => d.id === titularId ? { ...d, suplentes: d.suplentes.map(s => s.id === docForm.id ? docForm : s) } : d) };
+      }
+      return { ...esc, docentes: esc.docentes.map(d => d.id === docForm.id ? { ...docForm, suplentes: d.suplentes } : d) };
+    }));
+  }
+  
+  function deleteDocente(escuelaId, docId, titularId) {
+    if (!confirm("¿Eliminar docente?")) return;
+    updateEscuelas(escuelas => escuelas.map(esc => {
+      if (esc.id !== escuelaId) return esc;
+      if (titularId) {
+        return { ...esc, docentes: esc.docentes.map(d => d.id === titularId ? { ...d, suplentes: d.suplentes.filter(s => s.id !== docId) } : d) };
+      }
+      return { ...esc, docentes: esc.docentes.filter(d => d.id !== docId) };
+    }));
+  }
+  
+  function addAlumno(escuelaId, alumnoForm) {
+    updateEscuelas(escuelas => escuelas.map(esc => esc.id !== escuelaId ? esc : { ...esc, alumnos: [...esc.alumnos, alumnoForm] }));
+  }
+  
+  function updateAlumno(escuelaId, alumnoForm) {
+    updateEscuelas(escuelas => escuelas.map(esc => esc.id !== escuelaId ? esc : { ...esc, alumnos: esc.alumnos.map(a => a.id === alumnoForm.id ? alumnoForm : a) }));
+  }
+  
+  function deleteAlumno(escuelaId, alumnoId) {
+    if (!confirm("¿Eliminar alumno?")) return;
+    updateEscuelas(escuelas => escuelas.map(esc => esc.id !== escuelaId ? esc : { ...esc, alumnos: esc.alumnos.filter(a => a.id !== alumnoId) }));
+  }
+  
+  const alertCount = db.escuelas.reduce((a, esc) => {
+    if (esc.docentes.length === 0) a++;
+    esc.docentes.forEach(d => { if (d.estado === "Licencia" && d.fechaFinLicencia && diasRestantes(d.fechaFinLicencia) <= 10) a++; });
+    return a;
+  }, 0);
+  
+  const filteredEscuelas = db.escuelas.filter(e =>
+    !search || e.escuela.toLowerCase().includes(search.toLowerCase()) ||
+    e.de.toLowerCase().includes(search.toLowerCase()) ||
+    e.nivel.toLowerCase().includes(search.toLowerCase()) ||
+    e.docentes.some(d => d.nombreApellido.toLowerCase().includes(search.toLowerCase())) ||
+    e.alumnos.some(a => a.nombre.toLowerCase().includes(search.toLowerCase()))
+  );
+  
+  if (!currentUser) return <Login onLogin={setCurrentUser} />;
+  
+  const navItems = [
+    { id: "dashboard", icon: "📊", label: "Dashboard" },
+    { id: "escuelas", icon: "🏫", label: "Escuelas", badge: 0 },
+    { id: "alertas", icon: "🔔", label: "Alertas", badge: alertCount },
+    { id: "estadisticas", icon: "📈", label: "Estadísticas" },
+    { id: "calendario", icon: "📅", label: "Calendario" },
+    { id: "exportar", icon: "📄", label: "Exportar" },
+  ];
+  
+  return (
+    <>
+      <div className="app">
+        {/* HEADER */}
+        <header className="header">
+          <div className="flex items-center gap-16">
+            <button className="btn-icon" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} style={{fontSize:18}}>☰</button>
+            <div>
+              <div className="header-title">🏫 Sistema ACDM</div>
+              <div className="header-sub">Gestión de Asistentes de Clase para Discapacidad Motriz</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-16">
+            <div className="search-input-wrap" style={{width:220}}>
+              <span className="search-icon">🔍</span>
+              <input className="form-input search-main" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar..." style={{paddingLeft:32}} />
+            </div>
+            <div className="papiweb-brand">
+              <div className="led-dot" />
+              <div className="papiweb-logo">
+                <div className="papiweb-text">PAPIWEB</div>
+                <div className="papiweb-sub">Desarrollos Informáticos</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-8">
+              <span style={{fontSize:11, color:'var(--text2)'}}>{currentUser.username}</span>
+              <span className={`badge ${isAdmin ? "badge-titular" : "badge-active"}`}>{currentUser.rol}</span>
+              <button className="btn btn-secondary btn-sm" onClick={() => setCurrentUser(null)}>Salir</button>
+            </div>
+          </div>
+        </header>
+        
+        <div className="main">
+          {/* SIDEBAR */}
+          <nav className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
+            <div className="nav-section" style={{display: sidebarCollapsed ? 'none' : 'block'}}>Navegación</div>
+            {navItems.map(item => (
+              <div key={item.id} className={`nav-item ${activeSection === item.id ? "active" : ""}`} onClick={() => setActiveSection(item.id)}>
+                <span className="nav-icon">{item.icon}</span>
+                {!sidebarCollapsed && <span>{item.label}</span>}
+                {!sidebarCollapsed && item.badge > 0 && <span className="nav-badge">{item.badge}</span>}
+              </div>
+            ))}
+            
+            {isAdmin && !sidebarCollapsed && (
+              <>
+                <hr className="divider" />
+                <div className="nav-section">Admin</div>
+                <div className="nav-item" onClick={() => { setEscuelaModal({ isNew: true, data: null }); setActiveSection("escuelas"); }}>
+                  <span className="nav-icon">➕</span>
+                  <span>Nueva Escuela</span>
+                </div>
+              </>
+            )}
+            
+            {!sidebarCollapsed && (
+              <div style={{padding:'20px 16px', marginTop:'auto'}}>
+                <div style={{fontSize:9, color:'var(--text3)', letterSpacing:1, textTransform:'uppercase', lineHeight:1.6}}>
+                  Atajos de teclado:<br/>
+                  Ctrl+F: Buscar<br/>
+                  Ctrl+E: Exportar<br/>
+                  Ctrl+Alt+A: Admin
+                </div>
+              </div>
+            )}
+          </nav>
+          
+          {/* CONTENT */}
+          <main className="content">
+            {/* DASHBOARD */}
+            {activeSection === "dashboard" && (
+              <div>
+                <div className="flex items-center justify-between mb-24">
+                  <div>
+                    <h1 style={{fontFamily:'Rajdhani', fontSize:28, fontWeight:700, color:'var(--accent)', letterSpacing:2}}>Dashboard</h1>
+                    <p style={{color:'var(--text2)', fontSize:13}}>Vista general del sistema — {new Date().toLocaleDateString('es-AR', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}</p>
+                  </div>
+                </div>
+                <Statistics escuelas={db.escuelas} />
+              </div>
+            )}
+            
+            {/* ESCUELAS */}
+            {activeSection === "escuelas" && (
+              <div>
+                <div className="flex items-center justify-between mb-16">
+                  <div>
+                    <h1 style={{fontFamily:'Rajdhani', fontSize:28, fontWeight:700, color:'var(--accent)', letterSpacing:2}}>Escuelas</h1>
+                    <p style={{color:'var(--text2)', fontSize:13}}>{filteredEscuelas.length} escuela(s) encontrada(s)</p>
+                  </div>
+                  <div className="flex gap-8 items-center flex-wrap">
+                    <div className="view-toggle">
+                      <button className={`view-btn ${viewMode === "full" ? "active" : ""}`} onClick={() => setViewMode("full")}>Completo</button>
+                      <button className={`view-btn ${viewMode === "compact" ? "active" : ""}`} onClick={() => setViewMode("compact")}>Compacto</button>
+                    </div>
+                    {isAdmin && <button className="btn btn-primary" onClick={() => setEscuelaModal({ isNew: true, data: null })}>➕ Nueva Escuela</button>}
+                  </div>
+                </div>
+                
+                {filteredEscuelas.length === 0 && <div className="no-data card">No se encontraron escuelas. {isAdmin && <button className="btn btn-primary btn-sm" style={{marginLeft:8}} onClick={() => setEscuelaModal({isNew:true,data:null})}>Crear primera escuela</button>}</div>}
+                
+                <div style={{display:'flex', flexDirection:'column', gap:12}}>
+                  {filteredEscuelas.map(esc => (
+                    <EscuelaDetail key={esc.id} esc={esc} viewMode={viewMode} isAdmin={isAdmin}
+                      onEdit={() => setEscuelaModal({ isNew: false, data: esc })}
+                      onAddDocente={(escId, titularId) => setDocenteModal({ isNew: true, escuelaId: escId, titularId: titularId || null, data: null })}
+                      onEditDocente={(escId, doc, titularId) => setDocenteModal({ isNew: false, escuelaId: escId, titularId: titularId || null, data: doc })}
+                      onDeleteDocente={deleteDocente}
+                      onAddAlumno={(escId) => setAlumnoModal({ isNew: true, escuelaId: escId, data: null })}
+                      onEditAlumno={(escId, alumno) => setAlumnoModal({ isNew: false, escuelaId: escId, data: alumno })}
+                      onDeleteAlumno={deleteAlumno}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* ALERTAS */}
+            {activeSection === "alertas" && (
+              <div>
+                <h1 style={{fontFamily:'Rajdhani', fontSize:28, fontWeight:700, color:'var(--accent)', letterSpacing:2, marginBottom:8}}>Centro de Alertas</h1>
+                <p style={{color:'var(--text2)', fontSize:13, marginBottom:24}}>{alertCount} alerta(s) activa(s)</p>
+                <AlertPanel escuelas={db.escuelas} />
+                
+                <div className="card mt-16">
+                  <div className="card-header"><span className="card-title">📋 Resumen de Licencias Activas</span></div>
+                  <div className="table-wrap">
+                    <table>
+                      <thead><tr><th>Escuela</th><th>Docente</th><th>Motivo</th><th>Inicio</th><th>Fin</th><th>Días Rest.</th><th>Suplente</th></tr></thead>
+                      <tbody>
+                        {db.escuelas.flatMap(esc => esc.docentes.filter(d => d.estado === "Licencia").map(d => (
+                          <tr key={`${esc.id}-${d.id}`}>
+                            <td style={{maxWidth:180, fontSize:12}}>{esc.escuela}</td>
+                            <td style={{fontFamily:'Rajdhani', fontWeight:700}}>{d.nombreApellido}</td>
+                            <td style={{fontSize:12}}>{d.motivo}</td>
+                            <td style={{fontSize:12}}>{formatDate(d.fechaInicioLicencia)}</td>
+                            <td style={{fontSize:12}}>{formatDate(d.fechaFinLicencia)}</td>
+                            <td><DaysRemaining fechaFin={d.fechaFinLicencia} /></td>
+                            <td style={{fontSize:12}}>{d.suplentes.length > 0 ? d.suplentes.map(s => s.nombreApellido).join(", ") : <span className="badge badge-danger">SIN SUPLENTE</span>}</td>
+                          </tr>
+                        )))}
+                      </tbody>
+                    </table>
+                    {db.escuelas.flatMap(e => e.docentes.filter(d => d.estado === "Licencia")).length === 0 && <div className="no-data">No hay licencias activas</div>}
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* ESTADISTICAS */}
+            {activeSection === "estadisticas" && (
+              <div>
+                <h1 style={{fontFamily:'Rajdhani', fontSize:28, fontWeight:700, color:'var(--accent)', letterSpacing:2, marginBottom:24}}>Estadísticas</h1>
+                <Statistics escuelas={db.escuelas} />
+              </div>
+            )}
+            
+            {/* CALENDARIO */}
+            {activeSection === "calendario" && <CalendarioView escuelas={db.escuelas} />}
+            
+            {/* EXPORTAR */}
+            {activeSection === "exportar" && (
+              <div>
+                <h1 style={{fontFamily:'Rajdhani', fontSize:28, fontWeight:700, color:'var(--accent)', letterSpacing:2, marginBottom:24}}>Exportar</h1>
+                <div className="card">
+                  <div className="card-header"><span className="card-title">Exportar datos</span></div>
+                  <p style={{color:'var(--text2)', marginBottom:16}}>Genera reportes en formato texto exportable (PDF-compatible) con los datos del sistema.</p>
+                  <button className="btn btn-primary" onClick={() => setShowExport(true)}>📄 Generar Reporte</button>
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
+      </div>
+      
+      {/* MODALS */}
+      {escuelaModal && (
+        <EscuelaModal isNew={escuelaModal.isNew} escuela={escuelaModal.data}
+          onSave={saveEscuela} onClose={() => setEscuelaModal(null)} />
+      )}
+      {docenteModal && (
+        <DocenteModal isNew={docenteModal.isNew} docente={docenteModal.data} titularId={docenteModal.titularId}
+          onSave={(form) => docenteModal.isNew ? addDocente(docenteModal.escuelaId, form, docenteModal.titularId) : updateDocente(docenteModal.escuelaId, form, docenteModal.titularId)}
+          onClose={() => setDocenteModal(null)} />
+      )}
+      {alumnoModal && (
+        <AlumnoModal isNew={alumnoModal.isNew} alumno={alumnoModal.data}
+          onSave={(form) => alumnoModal.isNew ? addAlumno(alumnoModal.escuelaId, form) : updateAlumno(alumnoModal.escuelaId, form)}
+          onClose={() => setAlumnoModal(null)} />
+      )}
+      {showExport && <ExportPDF escuelas={db.escuelas} onClose={() => setShowExport(false)} />}
+    </>
   );
 }
 
@@ -812,11 +1279,12 @@ function CalendarioView({ escuelas }) {
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
   
+  // Get events per day
   function getEventsForDay(d) {
     const date = new Date(year, month, d);
     const events = [];
     escuelas.forEach(esc => {
-      esc.docentes?.forEach(doc => {
+      esc.docentes.forEach(doc => {
         if (doc.fechaInicioLicencia && doc.fechaFinLicencia) {
           const s = new Date(doc.fechaInicioLicencia);
           const e = new Date(doc.fechaFinLicencia);
@@ -900,7 +1368,12 @@ function CalendarioView({ escuelas }) {
           ) : (
             <div className="card">
               <div className="card-header"><span className="card-title">📋 Licencias del Mes</span></div>
-              {escuelas.flatMap(esc => esc.docentes?.filter(d => d.fechaInicioLicencia).map(d => ({...d, esc: esc.escuela})) || []).map((d, i) => (
+              {escuelas.flatMap(esc => esc.docentes.filter(d => {
+                if (!d.fechaInicioLicencia) return false;
+                const s = new Date(d.fechaInicioLicencia);
+                const e = d.fechaFinLicencia ? new Date(d.fechaFinLicencia) : s;
+                return s.getMonth() <= month && e.getMonth() >= month && s.getFullYear() <= year && e.getFullYear() >= year;
+              }).map(d => ({...d, esc: esc.escuela}))).map((d, i) => (
                 <div key={i} className="docente-row" style={{marginBottom:8}}>
                   <div style={{fontFamily:'Rajdhani', fontWeight:700}}>{d.nombreApellido}</div>
                   <div style={{fontSize:11, color:'var(--text2)', marginTop:2}}>{d.esc}</div>
@@ -908,470 +1381,14 @@ function CalendarioView({ escuelas }) {
                   <div style={{fontSize:11, color:'var(--text3)', marginTop:2}}>{formatDate(d.fechaInicioLicencia)} → {formatDate(d.fechaFinLicencia)}</div>
                 </div>
               ))}
-              {!escuelas.some(esc => esc.docentes?.some(d => d.fechaInicioLicencia)) && (
+              {escuelas.flatMap(esc => esc.docentes.filter(d => d.fechaInicioLicencia)).length === 0 && (
                 <div className="no-data">Sin licencias registradas</div>
               )}
+            
             </div>
           )}
         </div>
       </div>
     </div>
-  );
-}
-
-// ============================================================
-// MAIN APP
-// ============================================================
-export default function App() {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [db, setDB] = useState({ escuelas: [], usuarios: [], alertasLeidas: [] });
-  const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState("dashboard");
-  const [viewMode, setViewMode] = useState("full");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [search, setSearch] = useState("");
-  const [showExport, setShowExport] = useState(false);
-  
-  const [escuelaModal, setEscuelaModal] = useState(null);
-  const [docenteModal, setDocenteModal] = useState(null);
-  const [alumnoModal, setAlumnoModal] = useState(null);
-  
-  const isAdmin = currentUser?.rol === "admin";
-
-  // Función para cargar datos desde Redis
-  async function loadData() {
-    try {
-      setLoading(true);
-      
-      // Cargar escuelas
-      const escuelasRes = await fetch('/api/kv/escuelas');
-      const escuelas = await escuelasRes.json();
-      
-      // Cargar usuarios (sin contraseñas)
-      const usuariosRes = await fetch('/api/kv/usuarios');
-      const usuarios = await usuariosRes.json();
-      
-      setDB({ escuelas, usuarios, alertasLeidas: [] });
-    } catch (error) {
-      console.error('Error cargando datos:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Inicializar KV y cargar datos al montar
-  useEffect(() => {
-    async function init() {
-      await initializeKV();
-      await loadData();
-    }
-    init();
-  }, []);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    function handler(e) {
-      if (e.ctrlKey && e.altKey && e.key === "a") {
-        // Auto-login como admin
-        handleLogin("admin", "admin2025");
-      }
-      if (e.ctrlKey && e.key === "f") { 
-        e.preventDefault(); 
-        document.querySelector(".search-main")?.focus(); 
-      }
-      if (e.ctrlKey && e.key === "e" && isAdmin) setShowExport(true);
-    }
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [isAdmin]);
-
-  // Función de login
-  async function handleLogin(username, password) {
-    try {
-      // Primero intentar con el usuario por defecto
-      if (username === "admin" && password === "admin2025") {
-        setCurrentUser({ id: "u1", username: "admin", rol: "admin" });
-        return true;
-      }
-      
-      // Si no, buscar en Redis
-      const usuariosRes = await fetch('/api/kv/usuarios');
-      const usuarios = await usuariosRes.json();
-      
-      const found = usuarios.find(u => u.username === username && u.passwordHash === btoa(password));
-      if (found) {
-        setCurrentUser(found);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Error en login:', error);
-      return false;
-    }
-  }
-
-  // Funciones para guardar cambios
-  async function saveEscuelasToRedis(escuelas) {
-    try {
-      await fetch('/api/kv/escuelas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ escuelas })
-      });
-    } catch (error) {
-      console.error('Error guardando escuelas:', error);
-    }
-  }
-
-  // Operaciones CRUD
-  function updateEscuelas(updater) {
-    setDB(prev => {
-      const newEscuelas = updater(prev.escuelas);
-      saveEscuelasToRedis(newEscuelas);
-      return { ...prev, escuelas: newEscuelas };
-    });
-  }
-  
-  function saveEscuela(form) {
-    updateEscuelas(escuelas => {
-      const idx = escuelas.findIndex(e => e.id === form.id);
-      if (idx >= 0) { 
-        const a = [...escuelas]; 
-        a[idx] = {...a[idx], ...form, updatedAt: new Date().toISOString()}; 
-        return a; 
-      }
-      return [...escuelas, {...form, id: form.id || `e${Date.now()}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()}];
-    });
-    setEscuelaModal(null);
-  }
-  
-  function deleteEscuela(id) {
-    if (!confirm("¿Eliminar escuela?")) return;
-    updateEscuelas(esc => esc.filter(e => e.id !== id));
-  }
-  
-  async function addDocente(escuelaId, docForm, titularId) {
-    try {
-      const response = await fetch('/api/kv/docentes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ escuelaId, docente: docForm, titularId })
-      });
-      
-      const result = await response.json();
-      if (result.success) {
-        await loadData(); // Recargar datos
-      }
-    } catch (error) {
-      console.error('Error agregando docente:', error);
-    }
-    setDocenteModal(null);
-  }
-  
-  async function updateDocente(escuelaId, docForm, titularId) {
-    try {
-      const response = await fetch('/api/kv/docentes', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ escuelaId, docente: docForm, titularId })
-      });
-      
-      const result = await response.json();
-      if (result.success) {
-        await loadData();
-      }
-    } catch (error) {
-      console.error('Error actualizando docente:', error);
-    }
-    setDocenteModal(null);
-  }
-  
-  async function deleteDocente(escuelaId, docenteId, titularId) {
-    if (!confirm("¿Eliminar docente?")) return;
-    
-    try {
-      const response = await fetch('/api/kv/docentes', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ escuelaId, docenteId, titularId })
-      });
-      
-      const result = await response.json();
-      if (result.success) {
-        await loadData();
-      }
-    } catch (error) {
-      console.error('Error eliminando docente:', error);
-    }
-  }
-  
-  function addAlumno(escuelaId, alumnoForm) {
-    updateEscuelas(escuelas => escuelas.map(esc => 
-      esc.id !== escuelaId ? esc : { 
-        ...esc, 
-        alumnos: [...(esc.alumnos || []), {
-          ...alumnoForm,
-          id: alumnoForm.id || `a${Date.now()}`,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }] 
-      }
-    ));
-    setAlumnoModal(null);
-  }
-  
-  function updateAlumno(escuelaId, alumnoForm) {
-    updateEscuelas(escuelas => escuelas.map(esc => 
-      esc.id !== escuelaId ? esc : { 
-        ...esc, 
-        alumnos: (esc.alumnos || []).map(a => 
-          a.id === alumnoForm.id ? {...alumnoForm, updatedAt: new Date().toISOString()} : a
-        ) 
-      }
-    ));
-    setAlumnoModal(null);
-  }
-  
-  function deleteAlumno(escuelaId, alumnoId) {
-    if (!confirm("¿Eliminar alumno?")) return;
-    updateEscuelas(escuelas => escuelas.map(esc => 
-      esc.id !== escuelaId ? esc : { 
-        ...esc, 
-        alumnos: (esc.alumnos || []).filter(a => a.id !== alumnoId) 
-      }
-    ));
-  }
-
-  const alertCount = db.escuelas.reduce((a, esc) => {
-    if (!esc.docentes?.length) a++;
-    esc.docentes?.forEach(d => { 
-      if (d.estado === "Licencia" && d.fechaFinLicencia && diasRestantes(d.fechaFinLicencia) <= 10) a++; 
-    });
-    return a;
-  }, 0);
-  
-  const filteredEscuelas = db.escuelas.filter(e =>
-    !search || e.escuela?.toLowerCase().includes(search.toLowerCase()) ||
-    e.de?.toLowerCase().includes(search.toLowerCase()) ||
-    e.nivel?.toLowerCase().includes(search.toLowerCase()) ||
-    e.docentes?.some(d => d.nombreApellido?.toLowerCase().includes(search.toLowerCase())) ||
-    e.alumnos?.some(a => a.nombre?.toLowerCase().includes(search.toLowerCase()))
-  );
-  
-  if (loading) {
-    return (
-      <>
-        <style>{STYLES}</style>
-        <div style={{display:'flex', justifyContent:'center', alignItems:'center', height:'100vh', background:'var(--bg)'}}>
-          <div className="papiweb-logo" style={{padding:'20px'}}>
-            <div className="papiweb-text" style={{fontSize:24}}>Cargando...</div>
-          </div>
-        </div>
-      </>
-    );
-  }
-  
-  if (!currentUser) {
-    return (
-      <>
-        <style>{STYLES}</style>
-        <Login onLogin={handleLogin} />
-      </>
-    );
-  }
-  
-  const navItems = [
-    { id: "dashboard", icon: "📊", label: "Dashboard" },
-    { id: "escuelas", icon: "🏫", label: "Escuelas", badge: 0 },
-    { id: "alertas", icon: "🔔", label: "Alertas", badge: alertCount },
-    { id: "estadisticas", icon: "📈", label: "Estadísticas" },
-    { id: "calendario", icon: "📅", label: "Calendario" },
-    { id: "exportar", icon: "📄", label: "Exportar" },
-  ];
-  
-  return (
-    <>
-      <style>{STYLES}</style>
-      <div className="app">
-        <header className="header">
-          <div className="flex items-center gap-16">
-            <button className="btn-icon" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} style={{fontSize:18}}>☰</button>
-            <div>
-              <div className="header-title">🏫 Sistema ACDM</div>
-              <div className="header-sub">Gestión de Asistentes de Clase para Discapacidad Motriz</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-16">
-            <div className="search-input-wrap" style={{width:220}}>
-              <span className="search-icon">🔍</span>
-              <input className="form-input search-main" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar..." style={{paddingLeft:32}} />
-            </div>
-            <div className="papiweb-brand">
-              <div className="led-dot" />
-              <div className="papiweb-logo">
-                <div className="papiweb-text">PAPIWEB</div>
-                <div className="papiweb-sub">Desarrollos Informáticos</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-8">
-              <span style={{fontSize:11, color:'var(--text2)'}}>{currentUser.username}</span>
-              <span className={`badge ${isAdmin ? "badge-titular" : "badge-active"}`}>{currentUser.rol}</span>
-              <button className="btn btn-secondary btn-sm" onClick={() => setCurrentUser(null)}>Salir</button>
-            </div>
-          </div>
-        </header>
-        
-        <div className="main">
-          <nav className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
-            <div className="nav-section" style={{display: sidebarCollapsed ? 'none' : 'block'}}>Navegación</div>
-            {navItems.map(item => (
-              <div key={item.id} className={`nav-item ${activeSection === item.id ? "active" : ""}`} onClick={() => setActiveSection(item.id)}>
-                <span className="nav-icon">{item.icon}</span>
-                {!sidebarCollapsed && <span>{item.label}</span>}
-                {!sidebarCollapsed && item.badge > 0 && <span className="nav-badge">{item.badge}</span>}
-              </div>
-            ))}
-            
-            {isAdmin && !sidebarCollapsed && (
-              <>
-                <hr className="divider" />
-                <div className="nav-section">Admin</div>
-                <div className="nav-item" onClick={() => { setEscuelaModal({ isNew: true, data: null }); setActiveSection("escuelas"); }}>
-                  <span className="nav-icon">➕</span>
-                  <span>Nueva Escuela</span>
-                </div>
-              </>
-            )}
-            
-            {!sidebarCollapsed && (
-              <div style={{padding:'20px 16px', marginTop:'auto'}}>
-                <div style={{fontSize:9, color:'var(--text3)', letterSpacing:1, textTransform:'uppercase', lineHeight:1.6}}>
-                  Atajos de teclado:<br/>
-                  Ctrl+F: Buscar<br/>
-                  Ctrl+E: Exportar<br/>
-                  Ctrl+Alt+A: Admin
-                </div>
-              </div>
-            )}
-          </nav>
-          
-          <main className="content">
-            {activeSection === "dashboard" && (
-              <div>
-                <div className="flex items-center justify-between mb-24">
-                  <div>
-                    <h1 style={{fontFamily:'Rajdhani', fontSize:28, fontWeight:700, color:'var(--accent)', letterSpacing:2}}>Dashboard</h1>
-                    <p style={{color:'var(--text2)', fontSize:13}}>Vista general del sistema — {new Date().toLocaleDateString('es-AR', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}</p>
-                  </div>
-                </div>
-                <Statistics escuelas={db.escuelas} />
-              </div>
-            )}
-            
-            {activeSection === "escuelas" && (
-              <div>
-                <div className="flex items-center justify-between mb-16">
-                  <div>
-                    <h1 style={{fontFamily:'Rajdhani', fontSize:28, fontWeight:700, color:'var(--accent)', letterSpacing:2}}>Escuelas</h1>
-                    <p style={{color:'var(--text2)', fontSize:13}}>{filteredEscuelas.length} escuela(s) encontrada(s)</p>
-                  </div>
-                  <div className="flex gap-8 items-center flex-wrap">
-                    <div className="view-toggle">
-                      <button className={`view-btn ${viewMode === "full" ? "active" : ""}`} onClick={() => setViewMode("full")}>Completo</button>
-                      <button className={`view-btn ${viewMode === "compact" ? "active" : ""}`} onClick={() => setViewMode("compact")}>Compacto</button>
-                    </div>
-                    {isAdmin && <button className="btn btn-primary" onClick={() => setEscuelaModal({ isNew: true, data: null })}>➕ Nueva Escuela</button>}
-                  </div>
-                </div>
-                
-                {filteredEscuelas.length === 0 && <div className="no-data card">No se encontraron escuelas. {isAdmin && <button className="btn btn-primary btn-sm" style={{marginLeft:8}} onClick={() => setEscuelaModal({isNew:true,data:null})}>Crear primera escuela</button>}</div>}
-                
-                <div style={{display:'flex', flexDirection:'column', gap:12}}>
-                  {filteredEscuelas.map(esc => (
-                    <EscuelaDetail key={esc.id} esc={esc} viewMode={viewMode} isAdmin={isAdmin}
-                      onEdit={() => setEscuelaModal({ isNew: false, data: esc })}
-                      onAddDocente={(escId, titularId) => setDocenteModal({ isNew: true, escuelaId: escId, titularId: titularId || null, data: null })}
-                      onEditDocente={(escId, doc, titularId) => setDocenteModal({ isNew: false, escuelaId: escId, titularId: titularId || null, data: doc })}
-                      onDeleteDocente={deleteDocente}
-                      onAddAlumno={(escId) => setAlumnoModal({ isNew: true, escuelaId: escId, data: null })}
-                      onEditAlumno={(escId, alumno) => setAlumnoModal({ isNew: false, escuelaId: escId, data: alumno })}
-                      onDeleteAlumno={deleteAlumno}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {activeSection === "alertas" && (
-              <div>
-                <h1 style={{fontFamily:'Rajdhani', fontSize:28, fontWeight:700, color:'var(--accent)', letterSpacing:2, marginBottom:8}}>Centro de Alertas</h1>
-                <p style={{color:'var(--text2)', fontSize:13, marginBottom:24}}>{alertCount} alerta(s) activa(s)</p>
-                <AlertPanel escuelas={db.escuelas} />
-                
-                <div className="card mt-16">
-                  <div className="card-header"><span className="card-title">📋 Resumen de Licencias Activas</span></div>
-                  <div className="table-wrap">
-                    <table>
-                      <thead><tr><th>Escuela</th><th>Docente</th><th>Motivo</th><th>Inicio</th><th>Fin</th><th>Días Rest.</th><th>Suplente</th></tr></thead>
-                      <tbody>
-                        {db.escuelas.flatMap(esc => esc.docentes?.filter(d => d.estado === "Licencia").map(d => (
-                          <tr key={`${esc.id}-${d.id}`}>
-                            <td style={{maxWidth:180, fontSize:12}}>{esc.escuela}</td>
-                            <td style={{fontFamily:'Rajdhani', fontWeight:700}}>{d.nombreApellido}</td>
-                            <td style={{fontSize:12}}>{d.motivo}</td>
-                            <td style={{fontSize:12}}>{formatDate(d.fechaInicioLicencia)}</td>
-                            <td style={{fontSize:12}}>{formatDate(d.fechaFinLicencia)}</td>
-                            <td><DaysRemaining fechaFin={d.fechaFinLicencia} /></td>
-                            <td style={{fontSize:12}}>{d.suplentes?.length > 0 ? d.suplentes.map(s => s.nombreApellido).join(", ") : <span className="badge badge-danger">SIN SUPLENTE</span>}</td>
-                          </tr>
-                        ))) || []}
-                      </tbody>
-                    </table>
-                    {!db.escuelas.some(esc => esc.docentes?.some(d => d.estado === "Licencia")) && <div className="no-data">No hay licencias activas</div>}
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {activeSection === "estadisticas" && (
-              <div>
-                <h1 style={{fontFamily:'Rajdhani', fontSize:28, fontWeight:700, color:'var(--accent)', letterSpacing:2, marginBottom:24}}>Estadísticas</h1>
-                <Statistics escuelas={db.escuelas} />
-              </div>
-            )}
-            
-            {activeSection === "calendario" && <CalendarioView escuelas={db.escuelas} />}
-            
-            {activeSection === "exportar" && (
-              <div>
-                <h1 style={{fontFamily:'Rajdhani', fontSize:28, fontWeight:700, color:'var(--accent)', letterSpacing:2, marginBottom:24}}>Exportar</h1>
-                <div className="card">
-                  <div className="card-header"><span className="card-title">Exportar datos</span></div>
-                  <p style={{color:'var(--text2)', marginBottom:16}}>Genera reportes en formato texto exportable con los datos del sistema.</p>
-                  <button className="btn btn-primary" onClick={() => setShowExport(true)}>📄 Generar Reporte</button>
-                </div>
-              </div>
-            )}
-          </main>
-        </div>
-      </div>
-      
-      {/* MODALS */}
-      {escuelaModal && (
-        <EscuelaModal isNew={escuelaModal.isNew} escuela={escuelaModal.data}
-          onSave={saveEscuela} onClose={() => setEscuelaModal(null)} />
-      )}
-      {docenteModal && (
-        <DocenteModal isNew={docenteModal.isNew} docente={docenteModal.data} titularId={docenteModal.titularId}
-          onSave={(form) => docenteModal.isNew ? addDocente(docenteModal.escuelaId, form, docenteModal.titularId) : updateDocente(docenteModal.escuelaId, form, docenteModal.titularId)}
-          onClose={() => setDocenteModal(null)} />
-      )}
-      {alumnoModal && (
-        <AlumnoModal isNew={alumnoModal.isNew} alumno={alumnoModal.data}
-          onSave={(form) => alumnoModal.isNew ? addAlumno(alumnoModal.escuelaId, form) : updateAlumno(alumnoModal.escuelaId, form)}
-          onClose={() => setAlumnoModal(null)} />
-      )}
-      {showExport && <ExportPDF escuelas={db.escuelas} onClose={() => setShowExport(false)} />}
-    </>
   );
 }
