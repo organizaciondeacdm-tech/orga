@@ -1,9 +1,8 @@
-import { kv } from '@vercel/kv';
-import { getEscuelas, saveEscuela, deleteEscuela } from '../../src/services/kvStorage';
+import { Redis } from '@upstash/redis';
+import { getEscuelas, saveEscuelas } from '../../src/services/kvStorage';
 
-const KEYS = {
-  ESCUELAS: 'acdm:escuelas'
-};
+const redis = Redis.fromEnv();
+const KEYS = { ESCUELAS: 'acdm:escuelas' };
 
 export default async function handler(req, res) {
   // Configurar CORS
@@ -11,6 +10,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
+  // Manejar preflight requests (OPTIONS)
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -18,25 +18,58 @@ export default async function handler(req, res) {
   try {
     switch (req.method) {
       case 'GET':
+        // Obtener todas las escuelas
         const escuelas = await getEscuelas();
         return res.status(200).json(escuelas);
-        
+
       case 'POST':
-        const { escuela, action } = req.body;
+        // Guardar el array completo de escuelas
+        const { escuelas: nuevasEscuelas } = req.body;
         
-        if (action === 'delete') {
-          await deleteEscuela(escuela.id);
-          return res.status(200).json({ success: true, message: 'Escuela eliminada' });
-        } else {
-          const saved = await saveEscuela(escuela);
-          return res.status(200).json({ success: true, data: saved });
+        if (!Array.isArray(nuevasEscuelas)) {
+          return res.status(400).json({ 
+            success: false, 
+            error: 'El body debe contener un array de escuelas' 
+          });
         }
+
+        await saveEscuelas(nuevasEscuelas);
+        return res.status(200).json({ 
+          success: true, 
+          message: 'Escuelas guardadas correctamente' 
+        });
+
+      case 'DELETE':
+        // Eliminar una escuela por ID
+        const { id } = req.body;
         
+        if (!id) {
+          return res.status(400).json({ 
+            success: false, 
+            error: 'Se requiere el ID de la escuela' 
+          });
+        }
+
+        const escuelasActuales = await getEscuelas();
+        const escuelasFiltradas = escuelasActuales.filter(e => e.id !== id);
+        await saveEscuelas(escuelasFiltradas);
+        
+        return res.status(200).json({ 
+          success: true, 
+          message: 'Escuela eliminada correctamente' 
+        });
+
       default:
-        return res.status(405).json({ error: 'Method not allowed' });
+        return res.status(405).json({ 
+          success: false, 
+          error: 'Method not allowed' 
+        });
     }
   } catch (error) {
-    console.error('KV API Error:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('❌ Error en API escuelas:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
   }
 }
