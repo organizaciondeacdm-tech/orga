@@ -1,6 +1,36 @@
-import { getUsuarios } from '../../src/services/kvStorage.backend.js';
-
+import { getUsuarios, initializeKV } from '../../src/services/kvStorage.backend.js';
 export default async function handler(req, res) {
+  await initializeKV(); // <--- LLAMADA OBLIGATORIA
+
+  if (req.method === 'GET') {
+    const usuarios = await getUsuarios();
+    // No enviar passwords en el JSON por seguridad
+    const safeUsers = usuarios.map(({passwordHash, ...user}) => user);
+    return res.status(200).json(safeUsers);
+  }
+
+
+  try {
+    if (req.method === 'GET') {
+      const usuarios = await getUsuarios();
+      return res.status(200).json(usuarios);
+    }
+    // ...
+  } catch (error) { ... }
+}
+
+  // LLAMADA OBLIGATORIA AL INICIO
+  await initializeKV(); 
+
+  try {
+    if (req.method === 'GET') {
+      const usuarios = await getUsuarios();
+      return res.status(200).json(usuarios);
+    }
+    // ...
+  } catch (error) { ... }
+}
+
   // Configurar CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');

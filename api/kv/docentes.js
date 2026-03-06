@@ -1,7 +1,16 @@
-import { 
-  getEscuelas, 
-  saveEscuelas 
-} from '../../src/services/kvStorage.backend.js';
+  // Lógica para filtrar docentes desde las escuelas...
+import { getEscuelas, initializeKV } from '../../src/services/kvStorage.backend.js';
+
+export default async function handler(req, res) {
+  await initializeKV(); // <--- LLAMADA OBLIGATORIA
+
+  if (req.method === 'GET') {
+    const escuelas = await getEscuelas();
+    // Extraer todos los docentes de todas las escuelas en un solo array
+    const todosLosDocentes = escuelas.flatMap(e => e.docentes || []);
+    return res.status(200).json(todosLosDocentes);
+  }
+}
 
 export default async function handler(req, res) {
   // Configurar CORS

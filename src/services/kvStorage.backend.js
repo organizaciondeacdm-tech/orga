@@ -1,3 +1,11 @@
+// En kvStorage.backend.js
+export async function initializeKV() {
+  const exists = await redis.exists('acdm:escuelas');
+  if (exists) return; // Si ya hay datos, sale rápido y no hace nada.
+  
+  // Si no hay datos, recién ahí hace el set de todo...
+}
+
 // Este archivo SOLO se usa en el backend (API routes) para acceso directo a Redis
 import { Redis } from '@upstash/redis';
 // src/services/kvStorage.backend.js
