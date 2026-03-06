@@ -9,6 +9,26 @@ const redis = new Redis({
 
 const KEYS = { ESCUELAS: 'acdm:escuelas' };
 
+// Función auxiliar para asegurar la estructura de las escuelas
+function ensureEscuelaStructure(escuela) {
+  return {
+    id: escuela.id || `e${Date.now()}`,
+    de: escuela.de || '',
+    escuela: escuela.escuela || '',
+    nivel: escuela.nivel || 'Primario',
+    direccion: escuela.direccion || '',
+    lat: escuela.lat || null,
+    lng: escuela.lng || null,
+    telefonos: Array.isArray(escuela.telefonos) ? escuela.telefonos : [''],
+    mail: escuela.mail || '',
+    acdmMail: escuela.acdmMail || '', // ← NUEVO campo
+    jornada: escuela.jornada || 'Simple',
+    turno: escuela.turno || 'SIMPLE MAÑANA', // ← Actualizado con nuevos valores
+    alumnos: Array.isArray(escuela.alumnos) ? escuela.alumnos : [],
+    docentes: Array.isArray(escuela.docentes) ? escuela.docentes : []
+  };
+}
+
 export default async function handler(req, res) {
   // Configurar CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -23,7 +43,7 @@ export default async function handler(req, res) {
   try {
     switch (req.method) {
       case 'GET':
-        // Obtener todas las escuelas
+        // Obtener todas las escuelas (ya normalizadas por getEscuelas)
         const escuelas = await getEscuelas();
         return res.status(200).json(escuelas);
 
@@ -38,10 +58,15 @@ export default async function handler(req, res) {
           });
         }
 
-        await saveEscuelas(nuevasEscuelas);
+        // Normalizar cada escuela antes de guardar
+        const escuelasNormalizadas = nuevasEscuelas.map(ensureEscuelaStructure);
+
+        await saveEscuelas(escuelasNormalizadas);
+        
         return res.status(200).json({ 
           success: true, 
-          message: 'Escuelas guardadas correctamente' 
+          message: 'Escuelas guardadas correctamente',
+          count: escuelasNormalizadas.length
         });
 
       case 'DELETE':

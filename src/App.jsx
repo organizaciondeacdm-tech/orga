@@ -1,7 +1,6 @@
 // Papiweb desarrollos informaticos 
-import { useEffect } from 'react';
-import { initializeKV } from './services/kvStorage';
 import { useState, useEffect, useCallback, useRef } from "react";
+import { initializeKV } from './services/kvStorage';
 
 // ============================================================
 // CRYPTO UTILS - Simple XOR + Base64 encryption for JSON DB
@@ -37,7 +36,7 @@ function loadDB() {
 }
 
 // ============================================================
-// INITIAL DATA
+// INITIAL DATA - ACTUALIZADO CON MAIL ACDM Y NUEVOS TURNOS
 // ============================================================
 const INITIAL_DB = {
   escuelas: [
@@ -46,7 +45,8 @@ const INITIAL_DB = {
       nivel: "Primario", direccion: "Av. Corrientes 1234, CABA",
       lat: -34.6037, lng: -58.3816,
       telefonos: ["011-4321-1234"], mail: "escuela1@bue.edu.ar",
-      jornada: "Completa", turno: "Mañana",
+      acdmMail: "acdm.escuela1@bue.edu.ar", // ← NUEVO: Mail del ACDM
+      jornada: "Completa", turno: "SIMPLE MAÑANA Y TARDE", // ← ACTUALIZADO
       alumnos: [
         { id: "a1", gradoSalaAnio: "3° Grado", nombre: "Martínez, Lucía", diagnostico: "TEA Nivel 1", observaciones: "Requiere acompañante en recreos" },
         { id: "a2", gradoSalaAnio: "3° Grado", nombre: "García, Tomás", diagnostico: "TDAH", observaciones: "Medicación en horario escolar" },
@@ -72,7 +72,8 @@ const INITIAL_DB = {
       nivel: "Inicial", direccion: "Av. Santa Fe 567, CABA",
       lat: -34.5958, lng: -58.3975,
       telefonos: ["011-4765-5678", "011-4765-5679"], mail: "jardin5@bue.edu.ar",
-      jornada: "Simple", turno: "Tarde",
+      acdmMail: "acdm.jardin5@bue.edu.ar", // ← NUEVO
+      jornada: "Simple", turno: "SIMPLE MAÑANA", // ← ACTUALIZADO
       alumnos: [
         { id: "a3", gradoSalaAnio: "Sala Roja", nombre: "Pérez, Santiago", diagnostico: "Síndrome de Down", observaciones: "Integración escolar plena" }
       ],
@@ -89,7 +90,8 @@ const INITIAL_DB = {
       nivel: "Secundario", direccion: "Calle Rivadavia 890, CABA",
       lat: -34.6158, lng: -58.4053,
       telefonos: ["011-4987-9012"], mail: "secundaria12@bue.edu.ar",
-      jornada: "Completa", turno: "Mañana",
+      acdmMail: "", // ← NUEVO: Vacío si no tiene
+      jornada: "Completa", turno: "SIMPLE TARDE", // ← ACTUALIZADO
       alumnos: [],
       docentes: []
     }
@@ -199,12 +201,23 @@ function DaysRemaining({ fechaFin, diasAutorizados, fechaInicio }) {
 }
 
 // ============================================================
-// ALERT PANEL
+// ALERT PANEL - ACTUALIZADO CON ALERTA DE MAIL ACDM
 // ============================================================
 function AlertPanel({ escuelas }) {
   const alerts = [];
   
   escuelas.forEach(esc => {
+    // Alerta si falta mail del ACDM
+    if (!esc.acdmMail) {
+      alerts.push({ 
+        type: "warning", 
+        icon: "📧", 
+        title: "Mail ACDM no registrado", 
+        desc: `${esc.escuela} no tiene registrado el mail del ACDM.`, 
+        school: esc.escuela 
+      });
+    }
+    
     // Schools without ACDM
     if (esc.docentes.length === 0) {
       alerts.push({ type: "danger", icon: "🏫", title: `Sin ACDM asignado`, desc: `${esc.escuela} (${esc.de}) no tiene docente asignado.`, school: esc.escuela });
@@ -470,13 +483,14 @@ function AlumnoModal({ alumno, isNew, onSave, onClose }) {
 }
 
 // ============================================================
-// SCHOOL FORM MODAL
+// SCHOOL FORM MODAL - ACTUALIZADO CON ACDM MAIL Y NUEVOS TURNOS
 // ============================================================
 function EscuelaModal({ escuela, isNew, onSave, onClose }) {
   const [form, setForm] = useState(escuela || {
     id: `e${Date.now()}`, de: "", escuela: "", nivel: "Primario",
     direccion: "", lat: null, lng: null, telefonos: [""], mail: "",
-    jornada: "Completa", turno: "Mañana", alumnos: [], docentes: []
+    acdmMail: "", // ← NUEVO campo
+    jornada: "Simple", turno: "SIMPLE MAÑANA", alumnos: [], docentes: []
   });
   
   function setPhone(i, val) {
@@ -524,17 +538,28 @@ function EscuelaModal({ escuela, isNew, onSave, onClose }) {
           <label className="form-label">Mail Institucional</label>
           <input type="email" className="form-input" value={form.mail} onChange={e => setForm({...form, mail: e.target.value})} placeholder="escuela@bue.edu.ar" />
         </div>
+        
+        {/* NUEVO: Mail del ACDM */}
+        <div className="form-group">
+          <label className="form-label">Mail del ACDM</label>
+          <input type="email" className="form-input" value={form.acdmMail || ""} onChange={e => setForm({...form, acdmMail: e.target.value})} placeholder="acdm@escuela.edu.ar" />
+        </div>
+        
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Jornada</label>
             <select className="form-select" value={form.jornada} onChange={e => setForm({...form, jornada: e.target.value})}>
-              <option>Simple</option><option>Completa</option><option>Extendida</option>
+              <option>Simple</option>
+              <option>Completa</option>
+              <option>Extendida</option>
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">Turno</label>
             <select className="form-select" value={form.turno} onChange={e => setForm({...form, turno: e.target.value})}>
-              <option>Mañana</option><option>Tarde</option><option>Vespertino</option><option>Noche</option>
+              <option>SIMPLE MAÑANA</option>
+              <option>SIMPLE TARDE</option>
+              <option>SIMPLE MAÑANA Y TARDE</option>
             </select>
           </div>
         </div>
@@ -558,7 +583,7 @@ function EscuelaModal({ escuela, isNew, onSave, onClose }) {
 }
 
 // ============================================================
-// SCHOOL DETAIL VIEW
+// SCHOOL DETAIL VIEW - ACTUALIZADO CON MAIL ACDM
 // ============================================================
 function EscuelaDetail({ esc, onEdit, onAddDocente, onEditDocente, onDeleteDocente, onAddAlumno, onEditAlumno, onDeleteAlumno, viewMode, isAdmin }) {
   const [expanded, setExpanded] = useState(false);
@@ -572,7 +597,7 @@ function EscuelaDetail({ esc, onEdit, onAddDocente, onEditDocente, onDeleteDocen
     setCalMonth(m); setCalYear(y);
   }
   
-  const hasAlerts = esc.docentes.length === 0 || esc.docentes.some(d => d.estado === "Licencia" && d.fechaFinLicencia && diasRestantes(d.fechaFinLicencia) <= 10);
+  const hasAlerts = esc.docentes.length === 0 || esc.docentes.some(d => d.estado === "Licencia" && d.fechaFinLicencia && diasRestantes(d.fechaFinLicencia) <= 10) || !esc.acdmMail;
 
   const openMaps = (e) => {
     e.stopPropagation();
@@ -658,6 +683,11 @@ function EscuelaDetail({ esc, onEdit, onAddDocente, onEditDocente, onDeleteDocen
           <span className="school-meta-item clickable" onClick={openMaps}>📍 {esc.direccion}</span>
           {esc.telefonos.map((t, i) => <span key={i} className="school-meta-item">📞 {t}</span>)}
           <span className="school-meta-item link" onClick={(e) => openMail(esc.mail, e)}>✉️ {esc.mail}</span>
+          
+          {/* NUEVO: Mail del ACDM */}
+          {esc.acdmMail && (
+            <span className="school-meta-item link" onClick={(e) => openMail(esc.acdmMail, e)}>📧 ACDM: {esc.acdmMail}</span>
+          )}
         </div>
       </div>
       {expanded && <EscuelaExpandida esc={esc} onEdit={onEdit} onAddDocente={onAddDocente} onEditDocente={onEditDocente} onDeleteDocente={onDeleteDocente} onAddAlumno={onAddAlumno} onEditAlumno={onEditAlumno} onDeleteAlumno={onDeleteAlumno} calYear={calYear} calMonth={calMonth} navCal={navCal} activeTab={activeTab} setActiveTab={setActiveTab} openMaps={openMaps} openMail={openMail} isAdmin={isAdmin} />}
@@ -773,6 +803,15 @@ function EscuelaExpandida({ esc, onEdit, onAddDocente, onEditDocente, onDeleteDo
             <div className="school-info-label">Mail</div>
             <div className="school-info-val link" onClick={(e) => openMail(esc.mail, e)}>✉️ {esc.mail}</div>
           </div>
+          
+          {/* NUEVO: Mail del ACDM */}
+          <div>
+            <div className="school-info-label">Mail ACDM</div>
+            <div className="school-info-val link" onClick={(e) => openMail(esc.acdmMail, e)}>
+              ✉️ {esc.acdmMail || "No especificado"}
+            </div>
+          </div>
+          
           <div>
             <div className="school-info-label">Teléfonos</div>
             <div className="school-info-val">{esc.telefonos.join(" | ")}</div>
@@ -796,7 +835,7 @@ function EscuelaExpandida({ esc, onEdit, onAddDocente, onEditDocente, onDeleteDo
 }
 
 // ============================================================
-// PDF EXPORT
+// PDF EXPORT - ACTUALIZADO CON MAIL ACDM
 // ============================================================
 function ExportPDF({ escuelas, onClose }) {
   const [filter, setFilter] = useState("all");
@@ -813,7 +852,9 @@ function ExportPDF({ escuelas, onClose }) {
       lines.push(`\n${esc.de} | ${esc.escuela}`);
       lines.push(`Nivel: ${esc.nivel} | Jornada: ${esc.jornada} | Turno: ${esc.turno}`);
       lines.push(`Dirección: ${esc.direccion}`);
-      lines.push(`Mail: ${esc.mail} | Tel: ${esc.telefonos.join(", ")}`);
+      lines.push(`Mail: ${esc.mail}`);
+      lines.push(`Mail ACDM: ${esc.acdmMail || "No especificado"}`); // ← NUEVO
+      lines.push(`Tel: ${esc.telefonos.join(", ")}`);
       if (tipo !== "mini") {
         lines.push(`\n  DOCENTES (${esc.docentes.length}):`);
         esc.docentes.forEach(d => {
@@ -871,6 +912,7 @@ function ExportPDF({ escuelas, onClose }) {
             <div key={esc.id} style={{marginBottom:12, paddingBottom:8, borderBottom:'1px solid #ddd'}}>
               <div style={{fontWeight:700, color:'#0066aa'}}>{esc.de} — {esc.escuela}</div>
               <div style={{fontSize:11, color:'#444'}}>{esc.nivel} | {esc.jornada} | {esc.turno} | {esc.mail}</div>
+              <div style={{fontSize:11, color:'#444'}}>📧 ACDM: {esc.acdmMail || "No especificado"}</div> {/* NUEVO */}
               {tipo !== "mini" && esc.docentes.map(d => (
                 <div key={d.id} style={{marginLeft:12, marginTop:4, fontSize:11}}>
                   <span style={{fontWeight:700}}>[{d.cargo}]</span> {d.nombreApellido} — <span style={{color: d.estado === "Activo" ? "green" : "red"}}>{d.estado}</span>
@@ -928,10 +970,7 @@ function Login({ onLogin }) {
         </div>
         {err && <div className="alert alert-danger" style={{marginBottom:12}}><span>⚠️</span>{err}</div>}
         <button className="btn btn-primary" style={{width:'100%', justifyContent:'center', marginTop:8}} onClick={doLogin}>Ingresar →</button>
-        <div className="hint-text">
-          // Demo: <span className="hint-key">Papiweb</span> / <span className="hint-key">admin2025</span>
-          // </br/>Acceso rápido: <span className="hint-key">ContionA</span>
-        </div>
+        <div className="hint-text"></div>
       </div>
     </div>
   );
@@ -944,7 +983,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [db, setDB] = useState(() => loadDB() || INITIAL_DB);
   const [activeSection, setActiveSection] = useState("dashboard");
-  const [viewMode, setViewMode] = useState("full"); // full | compact | table
+  const [viewMode, setViewMode] = useState("full");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [search, setSearch] = useState("");
   const [showExport, setShowExport] = useState(false);
@@ -953,8 +992,8 @@ export default function App() {
   const [escuelaModal, setEscuelaModal] = useState(null);
   const [docenteModal, setDocenteModal] = useState(null);
   const [alumnoModal, setAlumnoModal] = useState(null);
-  const [addDocenteTarget, setAddDocenteTarget] = useState(null); // {escuelaId, titularId?}
-  const [addAlumnoTarget, setAddAlumnoTarget] = useState(null); // escuelaId
+  const [addDocenteTarget, setAddDocenteTarget] = useState(null);
+  const [addAlumnoTarget, setAddAlumnoTarget] = useState(null);
   
   const isAdmin = currentUser?.rol === "admin";
   
@@ -998,7 +1037,6 @@ export default function App() {
     updateEscuelas(escuelas => escuelas.map(esc => {
       if (esc.id !== escuelaId) return esc;
       if (titularId) {
-        // Add as suplente to titular
         return { ...esc, docentes: esc.docentes.map(d => d.id === titularId ? { ...d, suplentes: [...(d.suplentes||[]), docForm] } : d) };
       }
       return { ...esc, docentes: [...esc.docentes, { ...docForm, suplentes: docForm.suplentes || [] }] };
@@ -1041,6 +1079,7 @@ export default function App() {
   
   const alertCount = db.escuelas.reduce((a, esc) => {
     if (esc.docentes.length === 0) a++;
+    if (!esc.acdmMail) a++; // ← Nueva alerta por mail de ACDM faltante
     esc.docentes.forEach(d => { if (d.estado === "Licencia" && d.fechaFinLicencia && diasRestantes(d.fechaFinLicencia) <= 10) a++; });
     return a;
   }, 0);
@@ -1279,7 +1318,6 @@ function CalendarioView({ escuelas }) {
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
   
-  // Get events per day
   function getEventsForDay(d) {
     const date = new Date(year, month, d);
     const events = [];
@@ -1384,7 +1422,6 @@ function CalendarioView({ escuelas }) {
               {escuelas.flatMap(esc => esc.docentes.filter(d => d.fechaInicioLicencia)).length === 0 && (
                 <div className="no-data">Sin licencias registradas</div>
               )}
-            
             </div>
           )}
         </div>
