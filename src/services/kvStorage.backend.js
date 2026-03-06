@@ -1,8 +1,6 @@
-// src/services/kvStorage.backend.js
 // Este archivo SOLO se usa en el backend (API routes) para acceso directo a Redis
 import { Redis } from '@upstash/redis';
-
-// Usar variables con prefijo STORAGE_ (las que Vercel creó)
+// src/services/kvStorage.backend.js
 const redis = new Redis({
   url: process.env.KV_REST_API_URL,
   token: process.env.KV_REST_API_TOKEN,
