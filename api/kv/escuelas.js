@@ -1,5 +1,11 @@
-import { Redis } from '@upstash/redis';
-import { getEscuelas, saveEscuelas } from '../../src/services/kvStorage.backend.js';
+// api/kv/escuelas.js
+import { getEscuelas, saveEscuelas, initializeKV } from '../../src/services/kvStorage.backend.js';
+
+export default async function handler(req, res) {
+  // 1. FORZAR INICIALIZACIÓN SI ESTÁ VACÍO
+  await initializeKV(); 
+
+  // ... resto del código (CORS, Switch, etc)
 
 // Usar las variables con prefijo STORAGE_ (las que Vercel creó)
 const redis = new Redis({
