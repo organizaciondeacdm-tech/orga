@@ -1250,7 +1250,7 @@ tr:last-child td {
   padding-left: 32px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px) 
   .sidebar {
     display: none;
   }
