@@ -1,4 +1,7 @@
 import { Redis } from '@upstash/redis';
+import { ESCUELAS_INICIALES, USUARIOS_INICIALES, ALERTAS_LEIDAS_INICIALES } from '../../src/data/seedData.js';
+// seedData también en _lib
+import { Redis } from '@upstash/redis';
 import { 
   ESCUELAS_INICIALES, 
   USUARIOS_INICIALES, 
