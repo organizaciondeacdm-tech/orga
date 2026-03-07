@@ -1,5 +1,18 @@
 // api/kv/usuarios/[id].js
- import { getUsuarios, addUsuario } from '../src/services/kvStorage.backend.js';
+// import { getUsuarios } from '../../src/services/kvStorage.backend.js';
+// Papiweb dinámicas dentro de /api, por eso se mueve a /api/usuarios/[id].js
+// Por esto (ruta relativa dentro de /api):
+import { getUsuarios } from '../_lib/kvStorage.backend.js';
+
+export default async function handler(req, res) {
+  try {
+    const usuarios = await getUsuarios();
+    res.status(200).json(usuarios);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
  export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'PUT, DELETE, OPTIONS');

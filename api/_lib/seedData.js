@@ -1,6 +1,17 @@
 // src/data/seedData.js
 // Datos iniciales para la aplicación ACDM
-
+// Función auxiliar para asegurar que los datos no tengan nulos críticos
+export function ensureEscuelaStructure(escuela) {
+  return {
+    ...escuela,
+    acdmMail: escuela.acdmMail || '',
+    jornada: escuela.jornada || 'Simple',
+    turno: escuela.turno || 'SIMPLE MAÑANA',
+    alumnos: Array.isArray(escuela.alumnos) ? escuela.alumnos : [],
+    docentes: Array.isArray(escuela.docentes) ? escuela.docentes : [],
+    telefonos: Array.isArray(escuela.telefonos) ? escuela.telefonos : ['']
+  };
+}
 // Función auxiliar para base64 (compatible con navegador y Node.js)
 export function safeBtoa(str) {
   if (typeof btoa === 'function') {
