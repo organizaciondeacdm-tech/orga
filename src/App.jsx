@@ -7,7 +7,6 @@ import Login from './components/Login.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import SchoolCard from './components/SchoolCard.jsx';
 import AddSchoolModal from './components/AddSchoolModal.jsx';
-import UserPanel from './components/UserPanel.jsx';
 // todos los hooks DENTRO del componente
 // =========================================
 export default function App() {
