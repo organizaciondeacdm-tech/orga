@@ -49,6 +49,18 @@ function MiniCalendar({ year, month, rangeStart, rangeEnd, onNavigate }) {
     return cur >= s && cur <= e;
   }
 
+  function isRangeStart(d) {
+    if (!rangeStart || !d) return false;
+    const s = new Date(rangeStart);
+    return s.getFullYear() === year && s.getMonth() === month && s.getDate() === d;
+  }
+
+  function isRangeEnd(d) {
+    if (!rangeEnd || !d) return false;
+    const e = new Date(rangeEnd);
+    return e.getFullYear() === year && e.getMonth() === month && e.getDate() === d;
+  }
+
   function isToday(d) {
     return today.getFullYear() === year && today.getMonth() === month && today.getDate() === d;
   }
@@ -63,7 +75,14 @@ function MiniCalendar({ year, month, rangeStart, rangeEnd, onNavigate }) {
       <div className="cal-grid">
         {dayNames.map(n => <div key={n} className="cal-day-header">{n}</div>)}
         {cells.map((d, i) => (
-          <div key={i} className={`cal-day ${d && isToday(d) ? 'today' : ''}`}>
+          <div key={i} className={[
+            "cal-day",
+            !d ? "empty" : "",
+            d && isToday(d) ? "today" : "",
+            d && isRangeStart(d) ? "range-start" : "",
+            d && isRangeEnd(d) ? "range-end" : "",
+            d && isInRange(d) && !isRangeStart(d) && !isRangeEnd(d) ? "in-range" : "",
+          ].join(" ")}>
             {d || ""}
           </div>
         ))}
@@ -103,11 +122,11 @@ function AlertPanel({ escuelas }) {
       });
     }
     
-    if (esc.docentes.length === 0) {
+    if (esc.docentes?.length === 0) {
       alerts.push({ type: "danger", icon: "🏫", title: "Sin ACDM asignado", desc: `${esc.escuela} no tiene docente asignado.` });
     }
     
-    esc.docentes.forEach(doc => {
+    esc.docentes?.forEach(doc => {
       if (doc.estado === "Licencia" && doc.fechaFinLicencia) {
         const dias = diasRestantes(doc.fechaFinLicencia);
         if (dias <= 0) {
@@ -138,6 +157,97 @@ function AlertPanel({ escuelas }) {
 }
 
 // ============================================================
+// STATISTICS COMPONENT
+// ============================================================
+function Statistics({ escuelas }) {
+  const totalEsc = escuelas.length;
+  const totalAlumnos = escuelas.reduce((a, e) => a + (e.alumnos?.length || 0), 0);
+  const totalDocentes = escuelas.reduce((a, e) => a + (e.docentes?.length || 0), 0);
+  const docentesLicencia = escuelas.reduce((a, e) => a + (e.docentes?.filter(d => d.estado === "Licencia").length || 0), 0);
+  const docentesActivos = totalDocentes - docentesLicencia;
+  const sinAcdm = escuelas.filter(e => !e.docentes?.length).length;
+  const totalSuplentes = escuelas.reduce((a, e) => a + (e.docentes?.reduce((b, d) => b + (d.suplentes?.length || 0), 0) || 0), 0);
+
+  return (
+    <div className="stats-grid">
+      <div className="stat-card">
+        <div className="stat-value">{totalEsc}</div>
+        <div className="stat-label">Escuelas</div>
+      </div>
+      <div className="stat-card">
+        <div className="stat-value">{totalAlumnos}</div>
+        <div className="stat-label">Alumnos</div>
+      </div>
+      <div className="stat-card">
+        <div className="stat-value">{docentesActivos}</div>
+        <div className="stat-label">ACDM Activos</div>
+      </div>
+      <div className="stat-card">
+        <div className="stat-value">{docentesLicencia}</div>
+        <div className="stat-label">En Licencia</div>
+      </div>
+      <div className="stat-card">
+        <div className="stat-value">{totalSuplentes}</div>
+        <div className="stat-label">Suplentes</div>
+      </div>
+      <div className="stat-card">
+        <div className="stat-value">{sinAcdm}</div>
+        <div className="stat-label">Sin ACDM</div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// SCHOOL CARD COMPONENT
+// ============================================================
+function EscuelaCard({ esc, onEdit, onAddDocente, isAdmin }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasAlerts = !esc.acdmMail || esc.docentes?.length === 0;
+
+  return (
+    <div className="school-card">
+      <div className="school-card-header" onClick={() => setExpanded(!expanded)}>
+        <div>
+          <div className="school-de">{esc.de}</div>
+          <div className="school-name">{esc.escuela}</div>
+          <div className="school-meta">
+            <span>📚 {esc.nivel}</span>
+            <span>⏱ {esc.jornada}</span>
+            <span>🕒 {esc.turno}</span>
+          </div>
+        </div>
+        {hasAlerts && <span className="alert-icon">⚠️</span>}
+      </div>
+      
+      {expanded && (
+        <div className="school-card-body">
+          <p>📍 {esc.direccion}</p>
+          <p>📧 {esc.mail}</p>
+          {esc.acdmMail && <p>📨 ACDM: {esc.acdmMail}</p>}
+          <p>📞 {esc.telefonos?.join(", ")}</p>
+          
+          <h4>Docentes ({esc.docentes?.length || 0})</h4>
+          {esc.docentes?.map(doc => (
+            <div key={doc.id} className="docente-row">
+              <strong>{doc.nombreApellido}</strong>
+              {doc.estado === "Licencia" && <DaysRemaining fechaFin={doc.fechaFinLicencia} />}
+            </div>
+          ))}
+          
+          {isAdmin && (
+            <div className="flex gap-8 mt-16">
+              <button className="btn btn-secondary btn-sm" onClick={() => onEdit(esc)}>✏️ Editar</button>
+              <button className="btn btn-primary btn-sm" onClick={() => onAddDocente(esc.id)}>+ Docente</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
 // LOGIN CON VIDEO DE FONDO
 // ============================================================
 function Login({ onLogin }) {
@@ -155,70 +265,39 @@ function Login({ onLogin }) {
   };
 
   return (
-    <div className="login-container" style={{ position: 'relative', overflow: 'hidden' }}>
-      <video autoPlay muted loop playsInline style={{
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        minWidth: '100%',
-        minHeight: '100%',
-        objectFit: 'cover',
-        opacity: 0.3,
-        zIndex: 0
-      }}>
+    <div className="login-container">
+      <video autoPlay muted loop playsInline className="login-video">
         <source src="/papiweb.mp4" type="video/mp4" />
       </video>
       
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0,0,0,0.5)',
-        zIndex: 1
-      }} />
-      
-      <div className="login-box" style={{ position: 'relative', zIndex: 2 }}>
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div className="papiweb-logo" style={{ padding: '8px 20px', display: 'inline-block' }}>
-            <div className="papiweb-text" style={{ fontSize: 22 }}>PAPIWEB</div>
-            <div className="papiweb-sub">Desarrollos Informáticos</div>
+      <div className="login-overlay">
+        <div className="login-box">
+          <div className="papiweb-logo" style={{ display: 'inline-block', marginBottom: 20 }}>
+            <span className="papiweb-text">PAPIWEB</span>
           </div>
           <h2 className="login-title">Sistema ACDM</h2>
           <p className="login-sub">Gestión de Asistentes de Clase</p>
-        </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">Usuario</label>
+          <form onSubmit={handleSubmit}>
             <input 
-              className="form-input" 
+              type="text" 
+              placeholder="Usuario" 
               value={user} 
               onChange={e => setUser(e.target.value)} 
-              placeholder="admin" 
-              autoFocus 
+              autoFocus
             />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Contraseña</label>
             <input 
               type="password" 
-              className="form-input" 
+              placeholder="Contraseña" 
               value={pass} 
               onChange={e => setPass(e.target.value)} 
-              placeholder="••••••••" 
             />
-          </div>
-
-          {err && <div className="alert alert-danger">⚠️ {err}</div>}
-
-          <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-            Ingresar →
-          </button>
-        </form>
+            {err && <div className="alert alert-danger">⚠️ {err}</div>}
+            <button type="submit" className="btn-login-cloud">
+              INGRESAR
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
@@ -231,14 +310,13 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [escuelas, setEscuelas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
   const [activeSection, setActiveSection] = useState("dashboard");
+  const [search, setSearch] = useState("");
   const [showExport, setShowExport] = useState(false);
   
-  // Modals state
+  // Modals
   const [escuelaModal, setEscuelaModal] = useState(null);
   const [docenteModal, setDocenteModal] = useState(null);
-  const [alumnoModal, setAlumnoModal] = useState(null);
 
   // Load data from cloud
   useEffect(() => {
@@ -247,7 +325,7 @@ export default function App() {
         setLoading(true);
         await initializeKV();
         const data = await getEscuelas();
-        setEscuelas(data);
+        setEscuelas(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Error loading data:", err);
       } finally {
@@ -281,20 +359,21 @@ export default function App() {
     return () => window.removeEventListener("keydown", handler);
   }, [currentUser]);
 
-  // Filter escuelas
+  const alertCount = escuelas.reduce((a, esc) => {
+    if (!esc.docentes?.length) a++;
+    if (!esc.acdmMail) a++;
+    esc.docentes?.forEach(d => { 
+      if (d.estado === "Licencia" && d.fechaFinLicencia && diasRestantes(d.fechaFinLicencia) <= 10) a++; 
+    });
+    return a;
+  }, 0);
+
   const filteredEscuelas = escuelas.filter(e =>
     !search || 
     e.escuela?.toLowerCase().includes(search.toLowerCase()) ||
     e.de?.toLowerCase().includes(search.toLowerCase()) ||
     e.nivel?.toLowerCase().includes(search.toLowerCase())
   );
-
-  // Alert count
-  const alertCount = escuelas.reduce((a, esc) => {
-    if (esc.docentes?.length === 0) a++;
-    if (!esc.acdmMail) a++;
-    return a;
-  }, 0);
 
   if (!currentUser) {
     return <Login onLogin={setCurrentUser} />;
@@ -308,10 +387,8 @@ export default function App() {
     <div className="app">
       <header className="header">
         <div className="flex items-center gap-16">
-          <div>
-            <h1 className="header-title">🏫 Sistema ACDM</h1>
-            <p className="header-sub">Gestión de Asistentes de Clase</p>
-          </div>
+          <h1 className="header-title">🏫 Sistema ACDM</h1>
+          <span className="header-sub">Gestión de Asistentes de Clase</span>
         </div>
         <div className="flex items-center gap-16">
           <div className="search-input-wrap">
@@ -322,8 +399,11 @@ export default function App() {
               placeholder="Buscar escuela..." 
             />
           </div>
-          <div className="papiweb-brand">
+          <div className="flex items-center gap-8">
             <span>{currentUser.username}</span>
+            <span className={`badge ${currentUser.rol === "admin" ? "badge-titular" : "badge-active"}`}>
+              {currentUser.rol}
+            </span>
             <button className="btn btn-secondary btn-sm" onClick={() => setCurrentUser(null)}>
               Salir
             </button>
@@ -333,98 +413,134 @@ export default function App() {
 
       <div className="main">
         <nav className="sidebar">
-          <div className="nav-item" onClick={() => setActiveSection("dashboard")}>
-            📊 Dashboard
+          <div className="nav-section">Navegación</div>
+          <div 
+            className={`nav-item ${activeSection === "dashboard" ? "active" : ""}`}
+            onClick={() => setActiveSection("dashboard")}
+          >
+            <span className="nav-icon">📊</span> Dashboard
           </div>
-          <div className="nav-item" onClick={() => setActiveSection("escuelas")}>
-            🏫 Escuelas
+          <div 
+            className={`nav-item ${activeSection === "escuelas" ? "active" : ""}`}
+            onClick={() => setActiveSection("escuelas")}
+          >
+            <span className="nav-icon">🏫</span> Escuelas
             {alertCount > 0 && <span className="nav-badge">{alertCount}</span>}
           </div>
-          <div className="nav-item" onClick={() => setActiveSection("exportar")}>
-            📄 Exportar
+          <div 
+            className={`nav-item ${activeSection === "alertas" ? "active" : ""}`}
+            onClick={() => setActiveSection("alertas")}
+          >
+            <span className="nav-icon">🔔</span> Alertas
+            {alertCount > 0 && <span className="nav-badge">{alertCount}</span>}
           </div>
+          <div 
+            className={`nav-item ${activeSection === "exportar" ? "active" : ""}`}
+            onClick={() => setActiveSection("exportar")}
+          >
+            <span className="nav-icon">📄</span> Exportar
+          </div>
+          
+          {currentUser?.rol === "admin" && (
+            <>
+              <hr className="divider" />
+              <div className="nav-section">Admin</div>
+              <div 
+                className="nav-item"
+                onClick={() => {
+                  setEscuelaModal({ isNew: true, data: null });
+                  setActiveSection("escuelas");
+                }}
+              >
+                <span className="nav-icon">➕</span> Nueva Escuela
+              </div>
+            </>
+          )}
         </nav>
 
         <main className="content">
           {activeSection === "dashboard" && (
-            <div>
+            <>
               <h2>Dashboard</h2>
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <div className="stat-value">{escuelas.length}</div>
-                  <div className="stat-label">Escuelas</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value">
-                    {escuelas.reduce((a, e) => a + (e.alumnos?.length || 0), 0)}
-                  </div>
-                  <div className="stat-label">Alumnos</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-value">
-                    {escuelas.reduce((a, e) => a + (e.docentes?.length || 0), 0)}
-                  </div>
-                  <div className="stat-label">Docentes</div>
-                </div>
-              </div>
+              <Statistics escuelas={escuelas} />
               <AlertPanel escuelas={escuelas} />
-            </div>
+            </>
           )}
 
           {activeSection === "escuelas" && (
-            <div>
+            <>
               <div className="flex justify-between mb-16">
                 <h2>Escuelas ({filteredEscuelas.length})</h2>
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => setEscuelaModal({ isNew: true, data: null })}
-                >
-                  ➕ Nueva Escuela
-                </button>
+                {currentUser?.rol === "admin" && (
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => setEscuelaModal({ isNew: true, data: null })}
+                  >
+                    ➕ Nueva Escuela
+                  </button>
+                )}
               </div>
 
-              <div className="escuelas-grid">
-                {filteredEscuelas.map(esc => (
-                  <div key={esc.id} className="school-card">
-                    <h3>{esc.escuela}</h3>
-                    <p>{esc.direccion}</p>
-                    <p>📧 {esc.acdmMail || "Sin mail ACDM"}</p>
-                    <p>🕒 {esc.turno}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+              {filteredEscuelas.length === 0 ? (
+                <div className="no-data">No se encontraron escuelas</div>
+              ) : (
+                <div className="card-grid">
+                  {filteredEscuelas.map(esc => (
+                    <EscuelaCard 
+                      key={esc.id} 
+                      esc={esc} 
+                      isAdmin={currentUser?.rol === "admin"}
+                      onEdit={(escuela) => setEscuelaModal({ isNew: false, data: escuela })}
+                      onAddDocente={(escuelaId) => setDocenteModal({ isNew: true, escuelaId, data: null })}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {activeSection === "alertas" && (
+            <>
+              <h2>Centro de Alertas</h2>
+              <p>{alertCount} alerta(s) activa(s)</p>
+              <AlertPanel escuelas={escuelas} />
+            </>
           )}
 
           {activeSection === "exportar" && (
-            <div>
+            <>
               <h2>Exportar Datos</h2>
-              <button 
-                className="btn btn-primary"
-                onClick={() => {
-                  const dataStr = JSON.stringify(escuelas, null, 2);
-                  const blob = new Blob([dataStr], { type: 'application/json' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'escuelas.json';
-                  a.click();
-                }}
-              >
-                📥 Exportar JSON
-              </button>
-            </div>
+              <div className="card">
+                <p>Genera reportes en formato JSON</p>
+                <button 
+                  className="btn btn-primary"
+                  onClick={() => {
+                    const dataStr = JSON.stringify(escuelas, null, 2);
+                    const blob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'escuelas.json';
+                    a.click();
+                  }}
+                >
+                  📥 Exportar JSON
+                </button>
+              </div>
+            </>
           )}
         </main>
       </div>
 
-      {/* Modal placeholders - agregar según necesidad */}
+      {/* Modal placeholders - implementar según necesidad */}
       {escuelaModal && (
-        <div className="modal-overlay">
-          <div className="modal">
+        <div className="modal-overlay" onClick={() => setEscuelaModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
             <h3>{escuelaModal.isNew ? "Nueva Escuela" : "Editar Escuela"}</h3>
-            {/* Formulario de escuela aquí */}
-            <button onClick={() => setEscuelaModal(null)}>Cerrar</button>
+            <p>Modal de escuela - Implementar según tu diseño original</p>
+            <button className="btn btn-secondary" onClick={() => setEscuelaModal(null)}>
+              Cerrar
+            </button>
           </div>
         </div>
       )}
