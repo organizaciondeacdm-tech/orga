@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { getEscuelas, saveEscuelas, initializeKV } from './services/kvStorage.client.js';
 import "./Styles.css"; // Aquí es donde pegaste tu CSS gigante
 
-export default function App() {
+export default function App() 
   const [escuelas, setEscuelas] = useState([]);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
