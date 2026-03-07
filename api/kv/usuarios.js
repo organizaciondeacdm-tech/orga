@@ -1,7 +1,6 @@
 // api/kv/usuarios/[id].js
-import { updateUsuario, deleteUsuario } from '../../../src/services/kvStorage.backend.js';
-
-export default async function handler(req, res) {
+ import { getUsuarios, addUsuario } from '../src/services/kvStorage.backend.js';
+ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
