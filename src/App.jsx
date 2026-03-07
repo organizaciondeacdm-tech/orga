@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { getEscuelas, saveEscuelas, initializeKV } from './services/kvStorage.client.js';
 import "./styles.css"; 
+import UserPanel from './components/UserPanel.jsx';
 
 // ============================================================
 // UTILS Y FUNCIONES AUXILIARES
@@ -60,7 +61,17 @@ function getDaysInMonth(year, month) {
 function getFirstDayOfMonth(year, month) {
   return new Date(year, month, 1).getDay();
 }
+// En App.jsx, agregá en los estados:
+const [view, setView] = useState("escuelas"); // o "dashboard"
+// Agregá "usuarios" como opción
 
+// En el sidebar, después de Escuelas:
+<div className={`nav-item ${view === 'usuarios' ? 'active' : ''}`} onClick={() => setView('usuarios')}>
+  <span className="nav-icon">👥</span> Usuarios
+</div>
+
+// En el contenido, después de escuelas:
+{view === "usuarios" && <UserPanel />}
 // ============================================================
 // COMPONENTE: LOGIN CON VIDEO
 // ============================================================
