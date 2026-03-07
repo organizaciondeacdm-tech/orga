@@ -1,7 +1,7 @@
 // Papiweb desarrollos informáticos - Versión Pro Cloud
 import { useState, useEffect } from "react";
 import { getEscuelas, saveEscuelas, initializeKV } from './services/kvStorage.client.js';
-import "./Styles.css"; 
+import "./styles.css"; 
 
 // ============================================================
 // UTILS Y FUNCIONES AUXILIARES
