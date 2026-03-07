@@ -1,41 +1,48 @@
+// api/reset.js
 import { Redis } from '@upstash/redis';
-import { ESCUELAS_INICIALES, USUARIOS_INICIALES, ALERTAS_LEIDAS_INICIALES } from '../../src/data/seedData.js';
-// seedData también en _lib
-import { Redis } from '@upstash/redis';
-import { 
-  ESCUELAS_INICIALES, 
-  USUARIOS_INICIALES, 
-  ALERTAS_LEIDAS_INICIALES,
-  ensureEscuelaStructure 
-} from '../src/data/seedData.js'; // ← IMPORTACIÓN CORRECTA
+import { initializeKV } from './_lib/kvStorage.backend.js';
 
 const redis = new Redis({
-  url: process.env.KV_REST_API_URL,
-  token: process.env.KV_REST_API_TOKEN,
+  url: process.env.KV_REST_API_URL || process.env.STORAGE_KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN || process.env.STORAGE_KV_REST_API_TOKEN,
 });
 
 export default async function handler(req, res) {
+  // 1. Obtener el token de la URL (?secret=...)
   const { secret } = req.query;
-  const ADMIN_SECRET = process.env.ADMIN_SECRET_TOKEN || 'default-insecure-token-cambiar';
+  const MASTER_TOKEN = "un_token_muy_seguro_y_largo_aqui";
 
-  if (secret !== ADMIN_SECRET) {
-    return res.status(401).json({ success: false, error: 'No autorizado' });
+  // 2. Validación de seguridad
+  if (!secret || secret !== MASTER_TOKEN) {
+    return res.status(401).json({ 
+      success: false, 
+      error: 'Token de seguridad inválido o ausente' 
+    });
   }
 
   try {
-    const escuelas = ESCUELAS_INICIALES.map(ensureEscuelaStructure);
+    // 3. Limpiar TODAS las claves del proyecto (con el prefijo acdm:)
+    const keys = await redis.keys('acdm:*');
+    
+    if (keys.length > 0) {
+      await redis.del(...keys);
+    }
 
-    await redis.pipeline()
-      .set('acdm:escuelas', JSON.stringify(escuelas))
-      .set('acdm:usuarios', JSON.stringify(USUARIOS_INICIALES))
-      .set('acdm:alertas:leidas', JSON.stringify(ALERTAS_LEIDAS_INICIALES))
-      .exec();
+    // 4. Forzar la re-inicialización desde seedData
+    const initResult = await initializeKV();
 
-    return res.status(200).json({ 
-      success: true, 
-      count: escuelas.length 
+    return res.status(200).json({
+      success: true,
+      message: 'Reseteo completo exitoso',
+      clearedKeys: keys.length,
+      initialization: initResult
     });
+
   } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
+    console.error("Error en el proceso de reset:", error);
+    return res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
   }
 }
