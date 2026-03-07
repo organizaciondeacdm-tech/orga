@@ -3,7 +3,18 @@ import { useState, useEffect } from "react";
 import { getEscuelas, saveEscuelas, initializeKV } from './services/kvStorage.client.js';
 import "./styles.css"; 
 import UserPanel from './components/UserPanel.jsx';
-
+// CORRECCIÓN INMEDIATA: Mueve todos los hooks DENTRO del componente
+export default function App() {
+  // ✅ TODOS LOS HOOKS AQUÍ DENTRO
+  const [user, setUser] = useState(null);
+  const [escuelas, setEscuelas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState("escuelas");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [search, setSearch] = useState("");
+  
+  // ... resto del código
+}
 // ============================================================
 // UTILS Y FUNCIONES AUXILIARES
 // ============================================================
