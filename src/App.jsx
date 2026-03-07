@@ -1,7 +1,7 @@
 // Papiweb desarrollos informáticos - Versión Pro Cloud
 import { useState, useEffect } from "react";
-import "./styles.css";  // ✅ Justo después de imports de React
 import { getEscuelas, saveEscuelas, initializeKV } from './services/kvStorage.client.js';
+import "./styles.css"; 
 
 // ============================================================
 // UTILS Y FUNCIONES AUXILIARES
@@ -295,51 +295,80 @@ function AddSchoolModal({ onClose, onSave }) {
         <div className="form-grid">
           <div className="form-group">
             <label className="form-label">Distrito Escolar (DE)</label>
-            <input className="form-input" placeholder="Ej: DE 01" 
-              onChange={e => setFormData({...formData, de: e.target.value})} />
+            <input 
+              className="form-input" 
+              placeholder="Ej: DE 01" 
+              onChange={e => setFormData({...formData, de: e.target.value})} 
+            />
           </div>
           <div className="form-group">
             <label className="form-label">Nivel</label>
-            <select className="form-select" onChange={e => setFormData({...formData, nivel: e.target.value})}>
-              <option>Inicial</option><option>Primario</option><option>Secundario</option>
+            <select 
+              className="form-select" 
+              onChange={e => setFormData({...formData, nivel: e.target.value})}
+            >
+              <option>Inicial</option>
+              <option>Primario</option>
+              <option>Secundario</option>
             </select>
           </div>
         </div>
 
         <div className="form-group">
           <label className="form-label">Nombre de la Institución</label>
-          <input className="form-input" placeholder="Nombre completo" 
-            onChange={e => setFormData({...formData, escuela: e.target.value})} />
+          <input 
+            className="form-input" 
+            placeholder="Nombre completo" 
+            onChange={e => setFormData({...formData, escuela: e.target.value})} 
+          />
         </div>
 
         <div className="form-group">
           <label className="form-label">Dirección</label>
-          <input className="form-input" placeholder="Calle, número, localidad" 
-            onChange={e => setFormData({...formData, direccion: e.target.value})} />
+          <input 
+            className="form-input" 
+            placeholder="Calle, número, localidad" 
+            onChange={e => setFormData({...formData, direccion: e.target.value})} 
+          />
         </div>
 
         <div className="form-group">
           <label className="form-label">Mail Institucional</label>
-          <input type="email" className="form-input" placeholder="escuela@bue.edu.ar" 
-            onChange={e => setFormData({...formData, mail: e.target.value})} />
+          <input 
+            type="email" 
+            className="form-input" 
+            placeholder="escuela@bue.edu.ar" 
+            onChange={e => setFormData({...formData, mail: e.target.value})} 
+          />
         </div>
 
         <div className="form-group">
           <label className="form-label">Mail del ACDM</label>
-          <input type="email" className="form-input" placeholder="acdm@escuela.edu.ar" 
-            onChange={e => setFormData({...formData, acdmMail: e.target.value})} />
+          <input 
+            type="email" 
+            className="form-input" 
+            placeholder="acdm@escuela.edu.ar" 
+            onChange={e => setFormData({...formData, acdmMail: e.target.value})} 
+          />
         </div>
 
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Jornada</label>
-            <select className="form-select" onChange={e => setFormData({...formData, jornada: e.target.value})}>
-              <option>Simple</option><option>Completa</option>
+            <select 
+              className="form-select" 
+              onChange={e => setFormData({...formData, jornada: e.target.value})}
+            >
+              <option>Simple</option>
+              <option>Completa</option>
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">Turno</label>
-            <select className="form-select" onChange={e => setFormData({...formData, turno: e.target.value})}>
+            <select 
+              className="form-select" 
+              onChange={e => setFormData({...formData, turno: e.target.value})}
+            >
               <option>SIMPLE MAÑANA</option>
               <option>SIMPLE TARDE</option>
               <option>SIMPLE MAÑANA Y TARDE</option>
@@ -351,17 +380,28 @@ function AddSchoolModal({ onClose, onSave }) {
           <label className="form-label">Teléfonos</label>
           {formData.telefonos.map((tel, i) => (
             <div key={i} className="flex gap-8 mb-8">
-              <input className="form-input" value={tel} placeholder="011-XXXX-XXXX"
-                onChange={e => handlePhoneChange(i, e.target.value)} />
+              <input 
+                className="form-input" 
+                value={tel} 
+                placeholder="011-XXXX-XXXX"
+                onChange={e => handlePhoneChange(i, e.target.value)} 
+              />
               {formData.telefonos.length > 1 && (
-                <button className="btn btn-danger btn-sm" onClick={() => {
-                  const newPhones = formData.telefonos.filter((_, idx) => idx !== i);
-                  setFormData({...formData, telefonos: newPhones});
-                }}>✕</button>
+                <button 
+                  className="btn btn-danger btn-sm" 
+                  onClick={() => {
+                    const newPhones = formData.telefonos.filter((_, idx) => idx !== i);
+                    setFormData({...formData, telefonos: newPhones});
+                  }}
+                >
+                  ✕
+                </button>
               )}
             </div>
           ))}
-          <button className="btn btn-secondary btn-sm" onClick={addPhone}>+ Agregar teléfono</button>
+          <button className="btn btn-secondary btn-sm" onClick={addPhone}>
+            + Agregar teléfono
+          </button>
         </div>
 
         <div className="modal-footer">
@@ -380,6 +420,17 @@ function SchoolCard({ escuela }) {
   const [expanded, setExpanded] = useState(false);
   const hasAlerts = !escuela.acdmMail || escuela.docentes?.length === 0;
 
+  const openMaps = (e) => {
+    e.stopPropagation();
+    const q = encodeURIComponent(escuela.direccion);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
+  };
+  
+  const openMail = (mailAddr, e) => {
+    e.stopPropagation();
+    window.open(`mailto:${mailAddr}`, "_blank");
+  };
+
   return (
     <div className="school-card">
       <div className="school-card-header" onClick={() => setExpanded(!expanded)}>
@@ -390,7 +441,9 @@ function SchoolCard({ escuela }) {
             <span className="school-meta-item">📚 {escuela.nivel}</span>
             <span className="school-meta-item">⏱ {escuela.jornada}</span>
             <span className="school-meta-item">🕒 {escuela.turno}</span>
-            <span className="school-meta-item">📍 {escuela.direccion}</span>
+            <span className="school-meta-item clickable" onClick={openMaps}>
+              📍 {escuela.direccion}
+            </span>
           </div>
         </div>
         {hasAlerts && <span className="alert-icon">⚠️</span>}
@@ -398,8 +451,18 @@ function SchoolCard({ escuela }) {
       
       {expanded && (
         <div className="school-card-body">
-          <p>📧 {escuela.mail}</p>
-          {escuela.acdmMail && <p>📨 ACDM: {escuela.acdmMail}</p>}
+          <p>
+            <span className="clickable" onClick={(e) => openMail(escuela.mail, e)}>
+              📧 {escuela.mail}
+            </span>
+          </p>
+          {escuela.acdmMail && (
+            <p>
+              <span className="clickable" onClick={(e) => openMail(escuela.acdmMail, e)}>
+                📨 ACDM: {escuela.acdmMail}
+              </span>
+            </p>
+          )}
           <p>📞 {escuela.telefonos?.join(" | ")}</p>
           
           <h4 className="mt-16">Docentes ({escuela.docentes?.length || 0})</h4>
@@ -429,7 +492,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [escuelas, setEscuelas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState("dashboard");
+  const [view, setView] = useState("escuelas"); // Cambiado a "escuelas" para ver las tarjetas
   const [showAddModal, setShowAddModal] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [search, setSearch] = useState("");
