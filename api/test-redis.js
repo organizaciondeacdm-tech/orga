@@ -1,34 +1,27 @@
 import { Redis } from '@upstash/redis';
 
-const redis = new Redis({
-  url: process.env.KV_REST_API_URL,
-  token: process.env.KV_REST_API_TOKEN,
-});
+const url = process.env.KV_REST_API_URL || process.env.STORAGE_KV_REST_API_URL;
+const token = process.env.KV_REST_API_TOKEN || process.env.STORAGE_KV_REST_API_TOKEN;
+
+// Si no hay URL, ni siquiera intentamos instanciar para evitar el error de parseo
+const redis = (url && token) 
+  ? new Redis({ url, token }) 
+  : null;
 
 export default async function handler(req, res) {
-  try {
-    // Probar escritura
-    await redis.set('test:connection', 'ok', { ex: 60 });
-    
-    // Probar lectura
-    const value = await redis.get('test:connection');
-    
-    // Probar operación con escuelas
-    const escuelas = await redis.get('acdm:escuelas');
-    
-    res.status(200).json({ 
-      success: true,
-      redis: {
-        writeRead: value === 'ok',
-        hasEscuelas: !!escuelas
-      },
-      message: 'Redis funcionando correctamente'
-    });
-  } catch (error) {
-    res.status(500).json({ 
+  if (!redis) {
+    return res.status(500).json({ 
       success: false, 
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      error: "Variables de entorno faltantes",
+      debug: { hasUrl: !!url, hasToken: !!token }
     });
+  }
+
+  try {
+    await redis.set('test_connection', 'ok', { ex: 10 });
+    const val = await redis.get('test_connection');
+    res.status(200).json({ success: true, data: val });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 }
