@@ -199,9 +199,234 @@ function Statistics({ escuelas }) {
 }
 
 // ============================================================
-// SCHOOL CARD COMPONENT
+// DOCENTE FORM MODAL
 // ============================================================
-function EscuelaCard({ esc, onEdit, onAddDocente, isAdmin }) {
+function DocenteModal({ docente, titularId, isNew, onSave, onClose }) {
+  const [form, setForm] = useState(docente || {
+    id: `d${Date.now()}`, cargo: "Titular", nombreApellido: "",
+    estado: "Activo", motivo: "-", diasAutorizados: 0,
+    fechaInicioLicencia: null, fechaFinLicencia: null, suplentes: []
+  });
+  
+  const MOTIVOS = ["-","Art. 101 - Enfermedad","Art. 102 - Familiar enfermo","Art. 103 - Maternidad","Art. 104 - Accidente de trabajo","Art. 108 - Gremial","Art. 115 - Estudio","Art. 140 - Concurso","Otro"];
+  
+  const [calYear, setCalYear] = useState(new Date().getFullYear());
+  const [calMonth, setCalMonth] = useState(new Date().getMonth());
+  
+  function navCal(d) {
+    let m = calMonth + d; let y = calYear;
+    if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; }
+    setCalMonth(m); setCalYear(y);
+  }
+  
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <div className="modal-title">{isNew ? "➕ Nuevo Docente" : "✏️ Editar Docente"}</div>
+          <button className="btn-icon" onClick={onClose}>✕</button>
+        </div>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Cargo</label>
+            <select className="form-select" value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})}>
+              <option>Titular</option><option>Suplente</option><option>Interino</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Nombre y Apellido</label>
+            <input className="form-input" value={form.nombreApellido} onChange={e => setForm({...form, nombreApellido: e.target.value})} placeholder="Apellido, Nombre" />
+          </div>
+        </div>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Estado</label>
+            <select className="form-select" value={form.estado} onChange={e => setForm({...form, estado: e.target.value})}>
+              <option>Activo</option><option>Licencia</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Motivo (Art.)</label>
+            <select className="form-select" value={form.motivo} onChange={e => setForm({...form, motivo: e.target.value})}>
+              {MOTIVOS.map(m => <option key={m}>{m}</option>)}
+            </select>
+          </div>
+        </div>
+        {form.estado === "Licencia" && (
+          <>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Días Autorizados</label>
+                <input type="number" className="form-input" value={form.diasAutorizados} onChange={e => setForm({...form, diasAutorizados: Number(e.target.value)})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Fecha Inicio Licencia</label>
+                <input type="date" className="form-input" value={form.fechaInicioLicencia || ""} onChange={e => setForm({...form, fechaInicioLicencia: e.target.value})} />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Fecha Fin Licencia</label>
+                <input type="date" className="form-input" value={form.fechaFinLicencia || ""} onChange={e => setForm({...form, fechaFinLicencia: e.target.value})} />
+              </div>
+            </div>
+            {(form.fechaInicioLicencia || form.fechaFinLicencia) && (
+              <div className="mb-16">
+                <MiniCalendar year={calYear} month={calMonth} rangeStart={form.fechaInicioLicencia} rangeEnd={form.fechaFinLicencia} onNavigate={navCal} />
+              </div>
+            )}
+          </>
+        )}
+        <div className="flex gap-8 justify-end mt-16">
+          <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
+          <button className="btn btn-primary" onClick={() => { onSave(form); onClose(); }}>Guardar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// ALUMNO FORM MODAL
+// ============================================================
+function AlumnoModal({ alumno, isNew, onSave, onClose }) {
+  const [form, setForm] = useState(alumno || { id: `a${Date.now()}`, gradoSalaAnio: "", nombre: "", diagnostico: "", observaciones: "" });
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <div className="modal-title">{isNew ? "➕ Nuevo Alumno" : "✏️ Editar Alumno"}</div>
+          <button className="btn-icon" onClick={onClose}>✕</button>
+        </div>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Grado / Sala / Año</label>
+            <input className="form-input" value={form.gradoSalaAnio} onChange={e => setForm({...form, gradoSalaAnio: e.target.value})} placeholder="Ej: 3° Grado" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Alumno (Apellido, Nombre)</label>
+            <input className="form-input" value={form.nombre} onChange={e => setForm({...form, nombre: e.target.value})} placeholder="Apellido, Nombre" />
+          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Diagnóstico</label>
+          <input className="form-input" value={form.diagnostico} onChange={e => setForm({...form, diagnostico: e.target.value})} placeholder="Ej: TEA Nivel 1, TDAH..." />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Observaciones</label>
+          <textarea className="form-textarea" value={form.observaciones} onChange={e => setForm({...form, observaciones: e.target.value})} placeholder="Observaciones adicionales..." />
+        </div>
+        <div className="flex gap-8 justify-end mt-16">
+          <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
+          <button className="btn btn-primary" onClick={() => { onSave(form); onClose(); }}>Guardar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// ESCUELA FORM MODAL
+// ============================================================
+function EscuelaModal({ escuela, isNew, onSave, onClose }) {
+  const [form, setForm] = useState(escuela || {
+    id: `e${Date.now()}`, de: "", escuela: "", nivel: "Primario",
+    direccion: "", lat: null, lng: null, telefonos: [""], mail: "",
+    acdmMail: "", jornada: "Simple", turno: "SIMPLE MAÑANA", alumnos: [], docentes: []
+  });
+  
+  function setPhone(i, val) {
+    const t = [...form.telefonos]; t[i] = val; setForm({...form, telefonos: t});
+  }
+  
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <div className="modal-title">{isNew ? "➕ Nueva Escuela" : "✏️ Editar Escuela"}</div>
+          <button className="btn-icon" onClick={onClose}>✕</button>
+        </div>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Distrito Escolar (DE)</label>
+            <input className="form-input" value={form.de} onChange={e => setForm({...form, de: e.target.value})} placeholder="Ej: DE 01" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Nivel</label>
+            <select className="form-select" value={form.nivel} onChange={e => setForm({...form, nivel: e.target.value})}>
+              <option>Inicial</option><option>Primario</option><option>Secundario</option><option>Especial</option>
+            </select>
+          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Nombre de la Escuela</label>
+          <input className="form-input" value={form.escuela} onChange={e => setForm({...form, escuela: e.target.value})} placeholder="Ej: Escuela N°1 ..." />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Dirección</label>
+          <input className="form-input" value={form.direccion} onChange={e => setForm({...form, direccion: e.target.value})} placeholder="Calle, número, localidad" />
+        </div>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Latitud (opcional)</label>
+            <input type="number" className="form-input" value={form.lat || ""} onChange={e => setForm({...form, lat: parseFloat(e.target.value)})} placeholder="-34.603" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Longitud (opcional)</label>
+            <input type="number" className="form-input" value={form.lng || ""} onChange={e => setForm({...form, lng: parseFloat(e.target.value)})} placeholder="-58.381" />
+          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Mail Institucional</label>
+          <input type="email" className="form-input" value={form.mail} onChange={e => setForm({...form, mail: e.target.value})} placeholder="escuela@bue.edu.ar" />
+        </div>
+        
+        <div className="form-group">
+          <label className="form-label">Mail del ACDM</label>
+          <input type="email" className="form-input" value={form.acdmMail || ""} onChange={e => setForm({...form, acdmMail: e.target.value})} placeholder="acdm@escuela.edu.ar" />
+        </div>
+        
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Jornada</label>
+            <select className="form-select" value={form.jornada} onChange={e => setForm({...form, jornada: e.target.value})}>
+              <option>Simple</option>
+              <option>Completa</option>
+              <option>Extendida</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Turno</label>
+            <select className="form-select" value={form.turno} onChange={e => setForm({...form, turno: e.target.value})}>
+              <option>SIMPLE MAÑANA</option>
+              <option>SIMPLE TARDE</option>
+              <option>SIMPLE MAÑANA Y TARDE</option>
+            </select>
+          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Teléfonos</label>
+          {form.telefonos.map((t, i) => (
+            <div key={i} className="flex gap-8 mb-8">
+              <input className="form-input" value={t} onChange={e => setPhone(i, e.target.value)} placeholder="011-XXXX-XXXX" />
+              {form.telefonos.length > 1 && <button className="btn btn-danger btn-sm" onClick={() => setForm({...form, telefonos: form.telefonos.filter((_,j)=>j!==i)})}>✕</button>}
+            </div>
+          ))}
+          <button className="btn btn-secondary btn-sm" onClick={() => setForm({...form, telefonos: [...form.telefonos, ""]})}>+ Agregar teléfono</button>
+        </div>
+        <div className="flex gap-8 justify-end mt-16">
+          <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
+          <button className="btn btn-primary" onClick={() => { onSave(form); onClose(); }}>Guardar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// ESCUELA CARD
+// ============================================================
+function EscuelaCard({ esc, onEdit, onAddDocente, onAddAlumno, isAdmin }) {
   const [expanded, setExpanded] = useState(false);
   const hasAlerts = !esc.acdmMail || esc.docentes?.length === 0;
 
@@ -230,7 +455,7 @@ function EscuelaCard({ esc, onEdit, onAddDocente, isAdmin }) {
           <h4>Docentes ({esc.docentes?.length || 0})</h4>
           {esc.docentes?.map(doc => (
             <div key={doc.id} className="docente-row">
-              <strong>{doc.nombreApellido}</strong>
+              <strong>{doc.nombreApellido}</strong> - {doc.cargo}
               {doc.estado === "Licencia" && <DaysRemaining fechaFin={doc.fechaFinLicencia} />}
             </div>
           ))}
@@ -239,6 +464,7 @@ function EscuelaCard({ esc, onEdit, onAddDocente, isAdmin }) {
             <div className="flex gap-8 mt-16">
               <button className="btn btn-secondary btn-sm" onClick={() => onEdit(esc)}>✏️ Editar</button>
               <button className="btn btn-primary btn-sm" onClick={() => onAddDocente(esc.id)}>+ Docente</button>
+              <button className="btn btn-primary btn-sm" onClick={() => onAddAlumno(esc.id)}>+ Alumno</button>
             </div>
           )}
         </div>
@@ -317,6 +543,9 @@ export default function App() {
   // Modals
   const [escuelaModal, setEscuelaModal] = useState(null);
   const [docenteModal, setDocenteModal] = useState(null);
+  const [alumnoModal, setAlumnoModal] = useState(null);
+
+  const isAdmin = currentUser?.rol === "admin";
 
   // Load data from cloud
   useEffect(() => {
@@ -341,35 +570,86 @@ export default function App() {
     await saveEscuelas(nuevasEscuelas);
   };
 
+  // DB Operations
+  function updateEscuelas(updater) {
+    const nuevasEscuelas = updater(escuelas);
+    setEscuelas(nuevasEscuelas);
+    saveEscuelas(nuevasEscuelas);
+  }
+
+  function saveEscuela(form) {
+    updateEscuelas(escuelas => {
+      const idx = escuelas.findIndex(e => e.id === form.id);
+      if (idx >= 0) {
+        const a = [...escuelas];
+        a[idx] = {...a[idx], ...form, updatedAt: new Date().toISOString()};
+        return a;
+      }
+      return [...escuelas, {...form, id: form.id || `e${Date.now()}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()}];
+    });
+    setEscuelaModal(null);
+  }
+
+  function addDocente(escuelaId, docForm, titularId) {
+    updateEscuelas(escuelas => escuelas.map(esc => {
+      if (esc.id !== escuelaId) return esc;
+      if (titularId) {
+        return {
+          ...esc,
+          docentes: esc.docentes.map(d =>
+            d.id === titularId ? { ...d, suplentes: [...(d.suplentes || []), docForm] } : d
+          )
+        };
+      }
+      return { ...esc, docentes: [...(esc.docentes || []), { ...docForm, suplentes: [] }] };
+    }));
+    setDocenteModal(null);
+  }
+
+  function addAlumno(escuelaId, alumnoForm) {
+    updateEscuelas(escuelas => escuelas.map(esc =>
+      esc.id !== escuelaId ? esc : {
+        ...esc,
+        alumnos: [...(esc.alumnos || []), {
+          ...alumnoForm,
+          id: alumnoForm.id || `a${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }]
+      }
+    ));
+    setAlumnoModal(null);
+  }
+
   // Keyboard shortcuts
   useEffect(() => {
     function handler(e) {
       if (e.ctrlKey && e.altKey && e.key === "a") {
         setCurrentUser({ username: "admin", rol: "admin" });
       }
-      if (e.ctrlKey && e.key === "f") { 
-        e.preventDefault(); 
-        document.querySelector(".search-main")?.focus(); 
+      if (e.ctrlKey && e.key === "f") {
+        e.preventDefault();
+        document.querySelector(".search-main")?.focus();
       }
-      if (e.ctrlKey && e.key === "e" && currentUser?.rol === "admin") {
+      if (e.ctrlKey && e.key === "e" && isAdmin) {
         setShowExport(true);
       }
     }
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [currentUser]);
+  }, [isAdmin]);
 
   const alertCount = escuelas.reduce((a, esc) => {
     if (!esc.docentes?.length) a++;
     if (!esc.acdmMail) a++;
-    esc.docentes?.forEach(d => { 
-      if (d.estado === "Licencia" && d.fechaFinLicencia && diasRestantes(d.fechaFinLicencia) <= 10) a++; 
+    esc.docentes?.forEach(d => {
+      if (d.estado === "Licencia" && d.fechaFinLicencia && diasRestantes(d.fechaFinLicencia) <= 10) a++;
     });
     return a;
   }, 0);
 
   const filteredEscuelas = escuelas.filter(e =>
-    !search || 
+    !search ||
     e.escuela?.toLowerCase().includes(search.toLowerCase()) ||
     e.de?.toLowerCase().includes(search.toLowerCase()) ||
     e.nivel?.toLowerCase().includes(search.toLowerCase())
@@ -383,6 +663,13 @@ export default function App() {
     return <div className="loader">Cargando datos desde la nube...</div>;
   }
 
+  const navItems = [
+    { id: "dashboard", icon: "📊", label: "Dashboard" },
+    { id: "escuelas", icon: "🏫", label: "Escuelas", badge: alertCount },
+    { id: "alertas", icon: "🔔", label: "Alertas", badge: alertCount },
+    { id: "exportar", icon: "📄", label: "Exportar" },
+  ];
+
   return (
     <div className="app">
       <header className="header">
@@ -392,16 +679,16 @@ export default function App() {
         </div>
         <div className="flex items-center gap-16">
           <div className="search-input-wrap">
-            <input 
-              className="form-input search-main" 
-              value={search} 
-              onChange={e => setSearch(e.target.value)} 
-              placeholder="Buscar escuela..." 
+            <input
+              className="form-input search-main"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar escuela..."
             />
           </div>
           <div className="flex items-center gap-8">
             <span>{currentUser.username}</span>
-            <span className={`badge ${currentUser.rol === "admin" ? "badge-titular" : "badge-active"}`}>
+            <span className={`badge ${isAdmin ? "badge-titular" : "badge-active"}`}>
               {currentUser.rol}
             </span>
             <button className="btn btn-secondary btn-sm" onClick={() => setCurrentUser(null)}>
@@ -414,38 +701,23 @@ export default function App() {
       <div className="main">
         <nav className="sidebar">
           <div className="nav-section">Navegación</div>
-          <div 
-            className={`nav-item ${activeSection === "dashboard" ? "active" : ""}`}
-            onClick={() => setActiveSection("dashboard")}
-          >
-            <span className="nav-icon">📊</span> Dashboard
-          </div>
-          <div 
-            className={`nav-item ${activeSection === "escuelas" ? "active" : ""}`}
-            onClick={() => setActiveSection("escuelas")}
-          >
-            <span className="nav-icon">🏫</span> Escuelas
-            {alertCount > 0 && <span className="nav-badge">{alertCount}</span>}
-          </div>
-          <div 
-            className={`nav-item ${activeSection === "alertas" ? "active" : ""}`}
-            onClick={() => setActiveSection("alertas")}
-          >
-            <span className="nav-icon">🔔</span> Alertas
-            {alertCount > 0 && <span className="nav-badge">{alertCount}</span>}
-          </div>
-          <div 
-            className={`nav-item ${activeSection === "exportar" ? "active" : ""}`}
-            onClick={() => setActiveSection("exportar")}
-          >
-            <span className="nav-icon">📄</span> Exportar
-          </div>
-          
-          {currentUser?.rol === "admin" && (
+          {navItems.map(item => (
+            <div
+              key={item.id}
+              className={`nav-item ${activeSection === item.id ? "active" : ""}`}
+              onClick={() => setActiveSection(item.id)}
+            >
+              <span className="nav-icon">{item.icon}</span>
+              {item.label}
+              {item.badge > 0 && <span className="nav-badge">{item.badge}</span>}
+            </div>
+          ))}
+
+          {isAdmin && (
             <>
               <hr className="divider" />
               <div className="nav-section">Admin</div>
-              <div 
+              <div
                 className="nav-item"
                 onClick={() => {
                   setEscuelaModal({ isNew: true, data: null });
@@ -471,8 +743,8 @@ export default function App() {
             <>
               <div className="flex justify-between mb-16">
                 <h2>Escuelas ({filteredEscuelas.length})</h2>
-                {currentUser?.rol === "admin" && (
-                  <button 
+                {isAdmin && (
+                  <button
                     className="btn btn-primary"
                     onClick={() => setEscuelaModal({ isNew: true, data: null })}
                   >
@@ -486,12 +758,13 @@ export default function App() {
               ) : (
                 <div className="card-grid">
                   {filteredEscuelas.map(esc => (
-                    <EscuelaCard 
-                      key={esc.id} 
-                      esc={esc} 
-                      isAdmin={currentUser?.rol === "admin"}
+                    <EscuelaCard
+                      key={esc.id}
+                      esc={esc}
+                      isAdmin={isAdmin}
                       onEdit={(escuela) => setEscuelaModal({ isNew: false, data: escuela })}
                       onAddDocente={(escuelaId) => setDocenteModal({ isNew: true, escuelaId, data: null })}
+                      onAddAlumno={(escuelaId) => setAlumnoModal({ isNew: true, escuelaId, data: null })}
                     />
                   ))}
                 </div>
@@ -512,7 +785,7 @@ export default function App() {
               <h2>Exportar Datos</h2>
               <div className="card">
                 <p>Genera reportes en formato JSON</p>
-                <button 
+                <button
                   className="btn btn-primary"
                   onClick={() => {
                     const dataStr = JSON.stringify(escuelas, null, 2);
@@ -532,17 +805,31 @@ export default function App() {
         </main>
       </div>
 
-      {/* Modal placeholders - implementar según necesidad */}
+      {/* MODALS */}
       {escuelaModal && (
-        <div className="modal-overlay" onClick={() => setEscuelaModal(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>{escuelaModal.isNew ? "Nueva Escuela" : "Editar Escuela"}</h3>
-            <p>Modal de escuela - Implementar según tu diseño original</p>
-            <button className="btn btn-secondary" onClick={() => setEscuelaModal(null)}>
-              Cerrar
-            </button>
-          </div>
-        </div>
+        <EscuelaModal
+          isNew={escuelaModal.isNew}
+          escuela={escuelaModal.data}
+          onSave={saveEscuela}
+          onClose={() => setEscuelaModal(null)}
+        />
+      )}
+      {docenteModal && (
+        <DocenteModal
+          isNew={docenteModal.isNew}
+          docente={docenteModal.data}
+          titularId={docenteModal.titularId}
+          onSave={(form) => addDocente(docenteModal.escuelaId, form, docenteModal.titularId)}
+          onClose={() => setDocenteModal(null)}
+        />
+      )}
+      {alumnoModal && (
+        <AlumnoModal
+          isNew={alumnoModal.isNew}
+          alumno={alumnoModal.data}
+          onSave={(form) => addAlumno(alumnoModal.escuelaId, form)}
+          onClose={() => setAlumnoModal(null)}
+        />
       )}
     </div>
   );
