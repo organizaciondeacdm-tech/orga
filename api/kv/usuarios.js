@@ -1,73 +1,45 @@
-// api/kv/usuarios/[id].js
-// import { getUsuarios } from '../../src/services/kvStorage.backend.js';
-// Papiweb dinámicas dentro de /api, por eso se mueve a /api/usuarios/[id].js
-// Por esto (ruta relativa dentro de /api):
-import { getUsuarios } from '../_lib/kvStorage.backend.js';
+// api/kv/usuarios.js
+import { getUsuarios, addUsuario } from '../_lib/kvStorage.backend.js';
 
 export default async function handler(req, res) {
-  try {
-    const usuarios = await getUsuarios();
-    res.status(200).json(usuarios);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-}
-
- export default async function handler(req, res) {
+  // Configurar CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  const { id } = req.query;
-
-  if (!id) {
-    return res.status(400).json({ 
-      success: false, 
-      error: 'ID de usuario requerido' 
-    });
-  }
-
   try {
     // ============================================================
-    // PUT - Actualizar usuario
+    // GET - Listar usuarios (sin contraseñas)
     // ============================================================
-    if (req.method === 'PUT') {
-      const { username, password, rol } = req.body;
-      const updates = {};
-      
-      if (username) updates.username = username;
-      if (password) updates.password = password;
-      if (rol) updates.rol = rol;
-
-      if (Object.keys(updates).length === 0) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'No se proporcionaron datos para actualizar' 
-        });
-      }
-
-      const usuarioActualizado = await updateUsuario(id, updates);
-      
-      return res.status(200).json({ 
-        success: true, 
-        data: usuarioActualizado,
-        message: 'Usuario actualizado correctamente'
-      });
+    if (req.method === 'GET') {
+      const usuarios = await getUsuarios();
+      const usuariosPublic = usuarios.map(({ passwordHash, ...rest }) => rest);
+      return res.status(200).json(usuariosPublic);
     }
 
     // ============================================================
-    // DELETE - Eliminar usuario
+    // POST - Crear nuevo usuario
     // ============================================================
-    if (req.method === 'DELETE') {
-      await deleteUsuario(id);
+    if (req.method === 'POST') {
+      const { username, password, rol } = req.body;
+
+      if (!username || !password) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Username y password son requeridos' 
+        });
+      }
+
+      const nuevoUsuario = await addUsuario({ username, password, rol });
       
-      return res.status(200).json({ 
+      return res.status(201).json({ 
         success: true, 
-        message: 'Usuario eliminado correctamente'
+        data: nuevoUsuario,
+        message: 'Usuario creado correctamente'
       });
     }
 
@@ -77,17 +49,9 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('❌ Error en API usuario:', error);
+    console.error('❌ Error en API usuarios:', error);
     
-    if (error.message.includes('No se puede eliminar')) {
-      return res.status(400).json({ success: false, error: error.message });
-    }
-    
-    if (error.message.includes('Usuario no encontrado')) {
-      return res.status(404).json({ success: false, error: error.message });
-    }
-    
-    if (error.message.includes('ya existe')) {
+    if (error.message === 'El nombre de usuario ya existe') {
       return res.status(400).json({ success: false, error: error.message });
     }
     

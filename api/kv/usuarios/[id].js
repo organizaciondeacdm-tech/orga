@@ -1,6 +1,8 @@
 // api/kv/usuarios/[id].js
- import { updateUsuario, deleteUsuario } from '../../src/services/kvStorage.backend.js';
- export default async function handler(req, res) {
+import { updateUsuario, deleteUsuario } from '../../_lib/kvStorage.backend.js';
+
+export default async function handler(req, res) {
+  // Configurar CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
