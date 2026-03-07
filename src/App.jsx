@@ -1,7 +1,7 @@
 // Papiweb Desarrollos Informáticos 2025 - Cloud Edition
 import { useState, useEffect } from "react";
 import { getEscuelas, saveEscuelas, initializeKV } from './services/kvStorage.client.js';
-import "./Styles.css"; 
+import "./styles.css"; 
 
 // ============================================================
 // DATE UTILS
