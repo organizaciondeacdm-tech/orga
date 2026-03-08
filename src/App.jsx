@@ -1,24 +1,26 @@
-// Papiweb desarrollos informáticos - Versión Pro Cloud
+// Papiweb desarrollos informáticos - Versión Pro Cloud con Soporte de Calendario
 import { useState, useEffect } from "react";
 import { getEscuelas, saveEscuelas, initializeKV } from './services/kvStorage.client.js';
 import "./styles.css"; 
+
+// Componentes
 import UserPanel from './components/UserPanel.jsx';
 import Login from './components/Login.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import SchoolCard from './components/SchoolCard.jsx';
 import AddSchoolModal from './components/AddSchoolModal.jsx';
-// todos los hooks DENTRO del componente
-// =========================================
+import CalendarView from './components/CalendarView.jsx'; // Importamos el nuevo componente
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [escuelas, setEscuelas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState("escuelas"); // Cambiado a "escuelas" para ver las tarjetas
+  const [view, setView] = useState("dashboard"); // Por defecto al Dashboard
   const [showAddModal, setShowAddModal] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [search, setSearch] = useState("");
 
-  // Cargar datos iniciales
+  // 1. Cargar datos iniciales desde Upstash/KV
   useEffect(() => {
     async function init() {
       try {
@@ -34,110 +36,151 @@ export default function App() {
     init();
   }, []);
 
-  // Guardar nueva escuela
+  // 2. Lógica de Guardado con ID único
   const handleAddSchool = async (newSchool) => {
     const updated = [...escuelas, { 
       ...newSchool, 
       id: `e${Date.now()}`,
-      alumnos: [], 
-      docentes: [],
-      lat: newSchool.lat ? parseFloat(newSchool.lat) : null,
-      lng: newSchool.lng ? parseFloat(newSchool.lng) : null
+      alumnos: newSchool.alumnos || [], 
+      docentes: newSchool.docentes || [],
     }];
     setEscuelas(updated);
     await saveEscuelas(updated);
     setShowAddModal(false);
   };
 
-  // Filtrar escuelas por búsqueda
-  const filteredEscuelas = escuelas.filter(e =>
-    !search || 
-    e.escuela?.toLowerCase().includes(search.toLowerCase()) ||
-    e.de?.toLowerCase().includes(search.toLowerCase()) ||
-    e.nivel?.toLowerCase().includes(search.toLowerCase())
-  );
+  // 3. Filtro inteligente (Búsqueda por Nombre, DE o Nivel)
+  const filteredEscuelas = escuelas.filter(e => {
+    const term = search.toLowerCase();
+    return !search || 
+      e.escuela?.toLowerCase().includes(term) ||
+      e.de?.toString().includes(term) ||
+      e.nivel?.toLowerCase().includes(term) ||
+      e.direccion?.toLowerCase().includes(term);
+  });
 
-  // Atajo de teclado
+  // 4. Atajo "Backdoor" para desarrollo/admin
   useEffect(() => {
     const handler = (e) => {
       if (e.ctrlKey && e.altKey && e.key === "a") {
-        setUser({ username: "admin", rol: "admin" });
+        setUser({ username: "admin_papiweb", rol: "admin" });
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  // Estados de carga y autenticación
+  if (loading) return <div className="loader-container"><div className="loader"></div><p>Sincronizando con la nube...</p></div>;
   if (!user) return <Login onLogin={setUser} />;
-  if (loading) return <div className="loader">Cargando datos desde la nube...</div>;
 
   return (
-    <div className="app">
-      {/* HEADER */}
+    <div className={`app-container ${sidebarCollapsed ? "sidebar-is-collapsed" : ""}`}>
+      {/* HEADER SUPERIOR */}
       <header className="header">
-        <div className="flex items-center gap-16">
+        <div className="header-left">
           <button className="btn-icon" onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>☰</button>
-          <div className="papiweb-brand">
-            <div className="papiweb-logo">
-              <span className="papiweb-text">PAPIWEB</span>
+          <div className="brand">
+            <span className="brand-logo">PW</span>
+            <div className="brand-text">
+              <span className="brand-name">PAPIWEB</span>
+              <span className="brand-sub">ACDM CLOUD PRO</span>
             </div>
-            <h1 className="header-title">ACDM CLOUD</h1>
           </div>
         </div>
         
-        <div className="flex items-center gap-16">
-          <div className="search-input-wrap">
+        <div className="header-center">
+          <div className="search-bar">
             <span className="search-icon">🔍</span>
             <input 
-              className="form-input" 
+              type="text"
+              className="search-input" 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
-              placeholder="Buscar escuela..." 
+              placeholder="Buscar por escuela, distrito o dirección..." 
             />
           </div>
-          <div className="flex items-center gap-8">
-            <span className="badge badge-active">{user.username}</span>
-            <button className="btn btn-secondary btn-sm" onClick={() => setUser(null)}>Salir</button>
-            <button className="btn btn-primary btn-sm" onClick={() => setShowAddModal(true)}>
-              ➕ NUEVA
-            </button>
+        </div>
+
+        <div className="header-right">
+          <div className="user-profile">
+            <span className="user-name">{user.username}</span>
+            <button className="btn-logout" onClick={() => setUser(null)} title="Cerrar sesión">🔌</button>
           </div>
+          <button className="btn-add-main" onClick={() => setShowAddModal(true)}>
+            <span>+</span> <span className="hide-mobile">Nueva Escuela</span>
+          </button>
         </div>
       </header>
 
-      <div className="main">
-        {/* SIDEBAR */}
-        <nav className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`}>
-          <div className="nav-section">Navegación</div>
-          <div className={`nav-item ${view === 'dashboard' ? 'active' : ''}`} onClick={() => setView('dashboard')}>
-            <span className="nav-icon">📊</span> Dashboard
+      <div className="layout-body">
+        {/* SIDEBAR DE NAVEGACIÓN */}
+        <aside className="sidebar">
+          <div className="sidebar-content">
+            <div className="nav-group">Menú Principal</div>
+            
+            <button className={`nav-link ${view === 'dashboard' ? 'is-active' : ''}`} onClick={() => setView('dashboard')}>
+              <span className="nav-icon">📊</span> <span className="nav-text">Dashboard</span>
+            </button>
+            
+            <button className={`nav-link ${view === 'escuelas' ? 'is-active' : ''}`} onClick={() => setView('escuelas')}>
+              <span className="nav-icon">🏫</span> <span className="nav-text">Escuelas</span>
+            </button>
+            
+            <button className={`nav-link ${view === 'calendario' ? 'is-active' : ''}`} onClick={() => setView('calendario')}>
+              <span className="nav-icon">📅</span> <span className="nav-text">Calendario Licencias</span>
+            </button>
+            
+            <div className="sidebar-footer">
+              <p>© 2024 Papiweb v2.1</p>
+            </div>
           </div>
-          <div className={`nav-item ${view === 'escuelas' ? 'active' : ''}`} onClick={() => setView('escuelas')}>
-            <span className="nav-icon">🏫</span> Escuelas
-          </div>
-        </nav>
+        </aside>
 
-        {/* CONTENT */}
-        <main className="content">
-          {view === "dashboard" && <Dashboard escuelas={escuelas} />}
+        {/* ÁREA DE CONTENIDO DINÁMICO */}
+        <main className="content-area">
+          {view === "dashboard" && (
+            <div className="fade-in">
+              <Dashboard escuelas={escuelas} />
+            </div>
+          )}
           
           {view === "escuelas" && (
-            <div>
-              <h2 className="mb-16">Escuelas ({filteredEscuelas.length})</h2>
+            <div className="fade-in">
+              <div className="view-header">
+                <h2>Listado de Instituciones</h2>
+                <span className="count-badge">{filteredEscuelas.length} resultados</span>
+              </div>
+              
               {filteredEscuelas.length === 0 ? (
-                <div className="no-data">No se encontraron escuelas</div>
+                <div className="empty-state">
+                  <p>🔍 No hay coincidencias con tu búsqueda.</p>
+                </div>
               ) : (
-                <div className="card-grid">
-                  {filteredEscuelas.map(esc => <SchoolCard key={esc.id} escuela={esc} />)}
+                <div className="school-grid">
+                  {filteredEscuelas.map(esc => (
+                    <SchoolCard key={esc.id} escuela={esc} />
+                  ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {view === "calendario" && (
+            <div className="fade-in">
+              <CalendarView escuelas={escuelas} />
             </div>
           )}
         </main>
       </div>
 
-      {/* MODAL DE NUEVA ESCUELA */}
-      {showAddModal && <AddSchoolModal onClose={() => setShowAddModal(false)} onSave={handleAddSchool} />}
+      {/* MODALES */}
+      {showAddModal && (
+        <AddSchoolModal 
+          onClose={() => setShowAddModal(false)} 
+          onSave={handleAddSchool} 
+        />
+      )}
     </div>
   );
 }

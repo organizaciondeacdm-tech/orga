@@ -805,4 +805,36 @@ body {
   background: rgba(255, 165, 2, 0.15);
   color: var(--yellow);
   border: 1px solid rgba(255, 165, 2, 0.3);
+
+  /* ============================================================
+   CALENDARIO DE LICENCIAS
+   ============================================================ */
+.licencias-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.licencia-item {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.licencia-item:hover {
+  border-color: var(--border2);
+  box-shadow: var(--glow);
+}
+
+.clickable {
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.clickable:hover {
+  color: var(--accent);
+  text-decoration: underline;
 }
