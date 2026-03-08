@@ -1,12 +1,10 @@
 // src/data/seedData.js
 
-// Función auxiliar para base64
 export function safeBtoa(str) {
   if (typeof btoa === 'function') return btoa(str);
   return Buffer.from(str).toString('base64');
 }
 
-// 1. Datos iniciales de ESCUELAS (Estructura Unificada)
 export const ESCUELAS_INICIALES = [
   {
     id: "e1",
@@ -21,88 +19,86 @@ export const ESCUELAS_INICIALES = [
     acdmMail: "acdm.escuela1@bue.edu.ar",
     jornada: "Completa",
     turno: "SIMPLE MAÑANA Y TARDE",
+    // --- GESTIÓN DE ALUMNOS ---
     alumnos: [
       {
         id: "a1",
         gradoSalaAnio: "3° Grado",
         nombre: "MARTÍNEZ, LUCÍA",
         diagnostico: "TEA Nivel 1",
-        acdmId: "d1", // Asignado a López, María Elena
+        acdmId: "d1",
         observaciones: "Requiere acompañante en recreos"
-      },
-      {
-        id: "a2",
-        gradoSalaAnio: "3° Grado",
-        nombre: "GARCÍA, TOMÁS",
-        diagnostico: "TDAH",
-        acdmId: "d2", // Asignado a Rodríguez, Carlos
-        observaciones: "Medicación en horario escolar"
       }
     ],
+    // --- GESTIÓN DE PERSONAL ---
     docentes: [
       {
         id: "d1",
         cargo: "Titular",
         nombreApellido: "LÓPEZ, MARÍA ELENA",
-        estado: "Licencia",
-        motivo: "Art. 102 - Enfermedad",
-        fechaFinLicencia: "2025-02-14",
-        suplentes: [
-          { id: "s1", nombreApellido: "FERNÁNDEZ, ANA CLARA", estado: "Activo" }
-        ]
-      },
-      {
-        id: "d2",
-        cargo: "Titular",
-        nombreApellido: "RODRÍGUEZ, CARLOS",
         estado: "Activo",
         suplentes: []
       }
-    ]
-  },
-  {
-    id: "e2",
-    de: "DE 02",
-    escuela: "Jardín N°5 María Montessori",
-    nivel: "Inicial",
-    direccion: "Av. Santa Fe 567, CABA",
-    alumnos: [
+    ],
+    // --- NUEVOS MÓDULOS DE SEGUIMIENTO ---
+    visitas: [
       {
-        id: "a3",
-        gradoSalaAnio: "Sala Roja",
-        nombre: "PÉREZ, SANTIAGO",
-        diagnostico: "Síndrome de Down",
-        acdmId: "", // Sin asignar todavía
-        observaciones: "Integración escolar plena"
+        id: "v1",
+        fecha: "2026-03-08",
+        acdmId: "d1",
+        acdmNombre: "LÓPEZ, MARÍA ELENA",
+        observacion: "Se trabajó en la adaptación de materiales. El alumno responde bien.",
+        tipo: "seguimiento",
+        adjuntos: []
       }
     ],
-    docentes: [
-      { id: "d3", nombreApellido: "GÓMEZ, PATRICIA", estado: "Activo", suplentes: [] }
+    proyectos: [
+      {
+        id: "p1",
+        nombre: "Adaptación de materiales táctiles",
+        descripcion: "Creación de materiales didácticos adaptados",
+        acdmResponsable: "d1",
+        fechaInicio: "2026-03-01",
+        fechaEntrega: "2026-04-15",
+        estado: "en_progreso",
+        avance: 65
+      }
+    ],
+    informes: [
+      {
+        id: "i1",
+        titulo: "Informe mensual Marzo 2026",
+        acdmId: "d1",
+        fechaEntrega: "2026-03-31",
+        contenido: "Resumen de actividades realizadas...",
+        estado: "entregado"
+      }
     ]
   }
 ];
 
-// 2. Datos iniciales de USUARIOS
 export const USUARIOS_INICIALES = [
   { id: "u1", username: "admin", passwordHash: safeBtoa("admin2025"), rol: "admin" },
   { id: "u2", username: "viewer", passwordHash: safeBtoa("viewer123"), rol: "viewer" }
 ];
 
-// 3. Objeto de Base de Datos inicial completo
 export const INITIAL_DB = {
   escuelas: ESCUELAS_INICIALES,
   usuarios: USUARIOS_INICIALES,
   alertasLeidas: []
 };
 
-// Función para normalizar estructura y evitar errores de "undefined"
+// Función crítica para asegurar que las escuelas nuevas o editadas tengan los arrays listos
 export function ensureEscuelaStructure(escuela) {
   return {
     ...escuela,
     id: escuela.id || `e${Date.now()}`,
     telefonos: Array.isArray(escuela.telefonos) ? escuela.telefonos : [],
     alumnos: Array.isArray(escuela.alumnos) ? escuela.alumnos : [],
-    docentes: Array.isArray(escuela.docentes) ? escuela.docentes : []
+    docentes: Array.isArray(escuela.docentes) ? escuela.docentes : [],
+    visitas: Array.isArray(escuela.visitas) ? escuela.visitas : [],
+    proyectos: Array.isArray(escuela.proyectos) ? escuela.proyectos : [],
+    informes: Array.isArray(escuela.informes) ? escuela.informes : []
   };
 }
 

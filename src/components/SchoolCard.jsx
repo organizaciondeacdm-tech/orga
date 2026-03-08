@@ -2,9 +2,11 @@
 import { useState } from "react";
 import DaysRemaining from './DaysRemaining.jsx';
 import AddDocenteModal from './AddDocenteModal.jsx'; 
+import SeguimientoPanel from './SeguimientoPanel.jsx'; // Importamos el nuevo panel
 
-export default function SchoolCard({ escuela, isAdmin, onDocenteAdded, onEdit, onDelete }) {
+export default function SchoolCard({ escuela, isAdmin, onDocenteAdded, onEdit, onDelete, onUpdate }) {
   const [expanded, setExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState('docentes'); // 'docentes' | 'seguimiento'
   const [showAddDocente, setShowAddDocente] = useState(false);
 
   const hasAlerts = !escuela.acdmMail || !escuela.docentes || escuela.docentes.length === 0;
@@ -32,14 +34,12 @@ export default function SchoolCard({ escuela, isAdmin, onDocenteAdded, onEdit, o
           <div className="school-meta">
             <span className="school-meta-item">📚 {escuela.nivel}</span>
             {escuela.direccion && (
-              <span className="school-meta-item clickable" onClick={openMaps} title="Ver en Google Maps">
-                📍 {escuela.direccion}
-              </span>
+              <span className="school-meta-item clickable" onClick={openMaps}>📍 {escuela.direccion}</span>
             )}
           </div>
         </div>
         <div className="header-icons">
-           {hasAlerts && <span className="alert-icon" title="Requiere atención">⚠️</span>}
+           {hasAlerts && <span className="alert-icon">⚠️</span>}
            <span className="chevron-icon">{expanded ? '▲' : '▼'}</span>
         </div>
       </div>
@@ -47,84 +47,94 @@ export default function SchoolCard({ escuela, isAdmin, onDocenteAdded, onEdit, o
       {/* CUERPO EXPANDIDO */}
       {expanded && (
         <div className="school-card-body fade-in">
-          <div className="contact-section">
-            <p className="contact-row">
-              <strong>Email:</strong> <span className="clickable text-link" onClick={(e) => handleMail(escuela.mail, e)}>{escuela.mail || "No registrado"}</span>
-            </p>
+          {/* INFO DE CONTACTO RÁPIDA */}
+          <div className="contact-section shadow-sm">
+            <span className="clickable" onClick={(e) => handleMail(escuela.mail, e)}>📧 {escuela.mail || "S/M"}</span>
             {escuela.acdmMail && (
-              <p className="contact-row">
-                <strong>ACDM:</strong> <span className="clickable text-link" onClick={(e) => handleMail(escuela.acdmMail, e)}>{escuela.acdmMail}</span>
-              </p>
+              <span className="clickable ml-8" onClick={(e) => handleMail(escuela.acdmMail, e)}>📨 ACDM: {escuela.acdmMail}</span>
             )}
-            <p className="contact-row">
-              <strong>Tel:</strong> {escuela.telefonos?.length > 0 ? escuela.telefonos.join(" | ") : "Sin teléfono"}
-            </p>
+            <span className="ml-8">📞 {escuela.telefonos?.[0] || "S/T"}</span>
           </div>
 
-          {/* SECCIÓN DOCENTES */}
-          <div className="docentes-section mt-16">
-            <div className="flex justify-between items-center mb-8 border-bottom pb-4">
-              <h4 className="title-rajdhani uppercase">Docentes ({escuela.docentes?.length || 0})</h4>
-              {isAdmin && (
-                <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); setShowAddDocente(true); }}>
-                  ➕ Agregar
-                </button>
-              )}
-            </div>
+          {/* SELECTOR DE PESTAÑAS (TABS) */}
+          <div className="tabs-container mt-16">
+            <button 
+              className={`tab-btn ${activeTab === 'docentes' ? 'active' : ''}`}
+              onClick={() => setActiveTab('docentes')}
+            >
+              👥 Docentes
+            </button>
+            <button 
+              className={`tab-btn ${activeTab === 'seguimiento' ? 'active' : ''}`}
+              onClick={() => setActiveTab('seguimiento')}
+            >
+              📋 Seguimiento
+            </button>
+          </div>
 
-            {escuela.docentes?.length > 0 ? (
-              <div className="docente-list">
-                {escuela.docentes.map(doc => (
-                  <div key={doc.id} className="docente-row shadow-sm">
-                    <div className="docente-info">
-                      <span className="docente-name">{doc.nombreApellido}</span>
-                      <span className={`badge ${doc.estado === "Activo" ? "badge-active" : "badge-licencia"}`}>
-                        {doc.estado}
-                      </span>
-                    </div>
-                    
-                    {doc.estado === "Licencia" && (
-                      <div className="licencia-detalle mt-4">
-                        <DaysRemaining fechaFin={doc.fechaFinLicencia} />
-                        {doc.motivo && doc.motivo !== "-" && (
-                          <span className="licencia-motivo text-small block mt-2" title={doc.motivo}>
-                            📝 {doc.motivo.length > 40 ? doc.motivo.substring(0, 40) + '…' : doc.motivo}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
+          {/* CONTENIDO DE PESTAÑA: DOCENTES */}
+          {activeTab === 'docentes' && (
+            <div className="tab-content fade-in">
+              <div className="flex justify-between items-center mb-8 mt-12">
+                <h4 className="title-rajdhani">PERSONAL ACDM ({escuela.docentes?.length || 0})</h4>
+                {isAdmin && (
+                  <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); setShowAddDocente(true); }}>
+                    ➕ Agregar
+                  </button>
+                )}
               </div>
-            ) : (
-              <p className="text-muted italic p-8 text-center">Sin docentes asignados.</p>
-            )}
-          </div>
 
-          {/* ACCIONES DE ESCUELA (Solo Admin) */}
+              {escuela.docentes?.length > 0 ? (
+                <div className="docente-list">
+                  {escuela.docentes.map(doc => (
+                    <div key={doc.id} className="docente-row shadow-sm">
+                      <div className="docente-info">
+                        <strong>{doc.nombreApellido}</strong>
+                        <span className={`badge ${doc.estado === "Activo" ? 'badge-active' : 'badge-licencia'}`}>{doc.estado}</span>
+                      </div>
+                      {doc.estado === "Licencia" && (
+                        <div className="licencia-detalle mt-4">
+                          <DaysRemaining fechaFin={doc.fechaFinLicencia} />
+                          {doc.motivo && <span className="licencia-motivo">📝 {doc.motivo}</span>}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="text-muted p-16 text-center">Sin docentes asignados.</p>}
+            </div>
+          )}
+
+          {/* CONTENIDO DE PESTAÑA: SEGUIMIENTO */}
+          {activeTab === 'seguimiento' && (
+            <div className="tab-content fade-in mt-12">
+              <SeguimientoPanel 
+                escuela={escuela} 
+                isAdmin={isAdmin} 
+                onUpdate={onUpdate} 
+              />
+            </div>
+          )}
+
+          {/* ACCIONES GENERALES (Solo Admin) */}
           {isAdmin && (
             <div className="school-actions mt-16 pt-16 border-top flex gap-8">
-              <button className="btn btn-secondary btn-sm flex-1" onClick={(e) => { e.stopPropagation(); onEdit(escuela); }}>
-                ✏️ Editar Escuela
-              </button>
+              <button className="btn btn-secondary btn-sm flex-1" onClick={(e) => { e.stopPropagation(); onEdit(escuela); }}>✏️ Editar Escuela</button>
               <button className="btn btn-danger btn-sm flex-1" onClick={(e) => {
                 e.stopPropagation();
                 if (confirm(`¿Eliminar la escuela "${escuela.escuela}"?`)) onDelete(escuela.id);
-              }}>
-                🗑️ Eliminar
-              </button>
+              }}>🗑️ Eliminar</button>
             </div>
           )}
         </div>
       )}
 
-      {/* MODAL AGREGAR DOCENTE */}
       {showAddDocente && (
         <AddDocenteModal
           escuelaId={escuela.id}
           onClose={() => setShowAddDocente(false)}
           onSave={(nuevoDocente) => {
-            if (onDocenteAdded) onDocenteAdded(escuela.id, nuevoDocente);
+            onDocenteAdded(escuela.id, nuevoDocente);
             setShowAddDocente(false);
           }}
         />
