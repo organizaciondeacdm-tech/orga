@@ -1495,3 +1495,11 @@ body {
   font-style: italic;
   margin-top: 4px;
 }
+/* Botón de agregar en línea */
+.justify-between {
+  justify-content: space-between;
+}
+
+.items-center {
+  align-items: center;
+}
