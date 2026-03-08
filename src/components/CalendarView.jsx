@@ -1,5 +1,6 @@
 // src/components/CalendarView.jsx
 import { useState } from "react";
+import DaysRemaining from './DaysRemaining.jsx'; // Importamos el componente de conteo
 
 export default function CalendarView({ escuelas }) {
   const [viewDate, setViewDate] = useState(new Date());
@@ -14,6 +15,7 @@ export default function CalendarView({ escuelas }) {
         escuela: esc.escuela,
         inicio: new Date(doc.fechaInicioLicencia + "T00:00:00"),
         fin: new Date(doc.fechaFinLicencia + "T00:00:00"),
+        finRaw: doc.fechaFinLicencia, // Para DaysRemaining
         motivo: doc.motivo
       }))
   );
@@ -27,6 +29,10 @@ export default function CalendarView({ escuelas }) {
   const diasDummies = Array(primerDiaMes).fill(null);
   const diasDelMes = Array.from({ length: diasEnMes }, (_, i) => i + 1);
 
+  // Nombres de los meses para el detalle lateral
+  const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
   // 3. Función para ver quién está de licencia un día específico
   const getLicenciasDelDia = (dia) => {
     if (!dia) return [];
@@ -34,26 +40,30 @@ export default function CalendarView({ escuelas }) {
     return licencias.filter(lic => fechaCorriente >= lic.inicio && fechaCorriente <= lic.fin);
   };
 
+  const licenciasDelDia = selectedDay ? getLicenciasDelDia(selectedDay) : [];
+
   return (
-    <div className="calendar-container card">
+    <div className="calendar-container card fade-in">
       <div className="calendar-header">
-        <h2>{viewDate.toLocaleString('es-AR', { month: 'long', year: 'numeric' }).toUpperCase()}</h2>
+        <h2 className="title-rajdhani">
+          {monthNames[month].toUpperCase()} {year}
+        </h2>
         <div className="calendar-nav">
-          <button onClick={() => setViewDate(new Date(year, month - 1, 1))}>◀</button>
-          <button onClick={() => setViewDate(new Date())}>Hoy</button>
-          <button onClick={() => setViewDate(new Date(year, month + 1, 1))}>▶</button>
+          <button className="btn-icon" onClick={() => { setViewDate(new Date(year, month - 1, 1)); setSelectedDay(null); }}>◀</button>
+          <button className="btn-sm btn-secondary" onClick={() => { setViewDate(new Date()); setSelectedDay(new Date().getDate()); }}>Hoy</button>
+          <button className="btn-icon" onClick={() => { setViewDate(new Date(year, month + 1, 1)); setSelectedDay(null); }}>▶</button>
         </div>
       </div>
 
       <div className="calendar-layout">
-        {/* MINIATURA DEL CALENDARIO */}
-        <div className="calendar-grid">
+        {/* GRILLA DEL CALENDARIO */}
+        <div className="calendar-grid shadow-sm">
           {['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'].map(d => <div key={d} className="dow">{d}</div>)}
           
           {[...diasDummies, ...diasDelMes].map((dia, i) => {
             const licsDia = getLicenciasDelDia(dia);
             const tieneLicencia = licsDia.length > 0;
-            const esHoy = dia === new Date().getDate() && month === new Date().getMonth();
+            const esHoy = dia === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear();
 
             return (
               <div 
@@ -62,27 +72,39 @@ export default function CalendarView({ escuelas }) {
                 onClick={() => dia && setSelectedDay(dia)}
               >
                 {dia}
-                {tieneLicencia && <div className="dot-marker"></div>}
+                {tieneLicencia && <div className="dot-marker shadow-glow"></div>}
               </div>
             );
           })}
         </div>
 
-        {/* DETALLE LATERAL (Miniatura de info) */}
-        <div className="calendar-details">
-          <h3>Detalles {selectedDay ? `del día ${selectedDay}` : 'del mes'}</h3>
+        {/* DETALLE LATERAL (Panel solicitado) */}
+        <div className="calendar-details card shadow-lg">
           {selectedDay ? (
-            getLicenciasDelDia(selectedDay).length > 0 ? (
-              getLicenciasDelDia(selectedDay).map((l, i) => (
-                <div key={i} className="mini-card-licencia">
-                  <strong>{l.docente}</strong>
-                  <span>{l.escuela}</span>
-                  <em className="text-small">{l.motivo}</em>
+            <div className="day-licencias fade-in">
+              <h3 className="mb-16 border-bottom pb-8">{selectedDay} de {monthNames[month]}</h3>
+              {licenciasDelDia.length === 0 ? (
+                <p className="text-muted italic">Sin licencias registradas este día.</p>
+              ) : (
+                <div className="licencias-scroll-list">
+                  {licenciasDelDia.map((lic, i) => (
+                    <div key={i} className="mini-card-licencia mb-12 shadow-sm">
+                      <div className="flex justify-between items-start">
+                        <strong>{lic.docente}</strong>
+                        <DaysRemaining fechaFin={lic.finRaw} />
+                      </div>
+                      <div className="licencia-escuela text-accent">{lic.escuela}</div>
+                      <div className="licencia-motivo text-small italic mt-4">"{lic.motivo || 'Sin motivo especificado'}"</div>
+                    </div>
+                  ))}
                 </div>
-              ))
-            ) : <p className="text-muted">No hay licencias este día.</p>
+              )}
+            </div>
           ) : (
-            <p className="text-muted">Seleccioná un día con marca para ver quién falta.</p>
+            <div className="empty-selection">
+              <span className="nav-icon big-icon">📅</span>
+              <p className="text-muted">Seleccioná un día marcado para ver los detalles de los docentes.</p>
+            </div>
           )}
         </div>
       </div>

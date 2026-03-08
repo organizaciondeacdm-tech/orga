@@ -1,115 +1,118 @@
 // src/components/UserPanel.jsx
 import { useState, useEffect } from "react";
+import DaysRemaining from './DaysRemaining.jsx';
 
-export default function UserPanel({ onClose }) {
+export default function UserPanel() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editingUser, setEditingUser] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newUser, setNewUser] = useState({ username: "", password: "", rol: "viewer" });
 
-  // Cargar usuarios
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
+  // 1. Cargar usuarios desde la API real
   const loadUsers = async () => {
     try {
       setLoading(true);
       const res = await fetch('/api/kv/usuarios');
       const data = await res.json();
-      setUsers(data);
+      setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Error loading users:', error);
+      console.error('Error al cargar usuarios:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Cambiar rol de usuario
-  const handleRoleChange = async (userId, newRole) => {
-    // Esta función necesitaría una API PUT/POST para actualizar usuarios
-    // Por ahora solo simulamos
-    console.log(`Cambiar usuario ${userId} a rol ${newRole}`);
-    // Recargar usuarios después
-    loadUsers();
-  };
+  useEffect(() => { loadUsers(); }, []);
 
-  // Agregar nuevo usuario
+  // 2. Agregar nuevo usuario (Llamada API POST)
   const handleAddUser = async () => {
-    // Necesitarías una API POST para crear usuarios
-    console.log('Agregar usuario:', newUser);
-    setShowAddModal(false);
-    loadUsers();
+    if (!newUser.username || !newUser.password) return alert("Completar todos los campos");
+    
+    try {
+      const res = await fetch('/api/kv/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUser)
+      });
+      if (res.ok) {
+        setShowAddModal(false);
+        setNewUser({ username: "", password: "", rol: "viewer" });
+        loadUsers();
+      }
+    } catch (error) {
+      alert("Error al crear usuario");
+    }
   };
 
-  // Eliminar usuario
+  // 3. Cambiar Rol (Llamada API PUT)
+  const handleRoleChange = async (user, newRole) => {
+    try {
+      await fetch('/api/kv/usuarios', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...user, rol: newRole })
+      });
+      loadUsers();
+    } catch (error) {
+      console.error("Error al actualizar rol");
+    }
+  };
+
+  // 4. Eliminar usuario (Llamada API DELETE)
   const handleDeleteUser = async (userId) => {
-    if (!confirm('¿Eliminar usuario?')) return;
-    // Necesitarías una API DELETE
-    console.log('Eliminar usuario:', userId);
-    loadUsers();
+    if (!confirm('¿Estás seguro de eliminar este acceso?')) return;
+    try {
+      await fetch('/api/kv/usuarios', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userId })
+      });
+      loadUsers();
+    } catch (error) {
+      console.error("Error al eliminar");
+    }
   };
 
-  if (loading) return <div className="loader">Cargando usuarios...</div>;
+  if (loading) return <div className="loader">Sincronizando cuentas...</div>;
 
   return (
-    <div className="user-panel">
-      <div className="flex justify-between mb-16">
-        <h2>Panel de Usuarios</h2>
+    <div className="user-panel card fade-in">
+      <div className="flex justify-between items-center mb-16">
+        <h2 className="title-rajdhani">GESTIÓN DE ACCESOS</h2>
         <button className="btn btn-primary btn-sm" onClick={() => setShowAddModal(true)}>
-          ➕ NUEVO USUARIO
+          ➕ NUEVO INTEGRANTE
         </button>
       </div>
 
-      <div className="table-wrap">
+      <div className="table-wrap shadow-sm">
         <table className="users-table">
           <thead>
             <tr>
               <th>Usuario</th>
-              <th>Rol</th>
+              <th>Permisos (Rol)</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {users.map(user => (
               <tr key={user.id}>
-                <td>{user.username}</td>
+                <td className="font-bold">{user.username}</td>
                 <td>
-                  {editingUser === user.id ? (
-                    <select 
-                      className="form-select"
-                      value={user.rol}
-                      onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                      onBlur={() => setEditingUser(null)}
-                    >
-                      <option value="admin">Admin</option>
-                      <option value="viewer">Viewer</option>
-                      <option value="editor">Editor</option>
-                    </select>
-                  ) : (
-                    <span className={`badge ${user.rol === 'admin' ? 'badge-titular' : 'badge-active'}`}>
-                      {user.rol}
-                    </span>
-                  )}
+                  <select 
+                    className="form-select-sm"
+                    value={user.rol}
+                    onChange={(e) => handleRoleChange(user, e.target.value)}
+                    disabled={user.username === 'admin'}
+                  >
+                    <option value="admin">Administrador</option>
+                    <option value="editor">Editor (Carga)</option>
+                    <option value="viewer">Viewer (Consulta)</option>
+                  </select>
                 </td>
                 <td>
-                  <div className="flex gap-4">
-                    <button 
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => setEditingUser(user.id)}
-                    >
-                      ✏️
-                    </button>
-                    {user.username !== 'admin' && (
-                      <button 
-                        className="btn btn-danger btn-sm"
-                        onClick={() => handleDeleteUser(user.id)}
-                      >
-                        🗑️
-                      </button>
-                    )}
-                  </div>
+                  {user.username !== 'admin' && (
+                    <button className="btn-icon text-danger" onClick={() => handleDeleteUser(user.id)}>🗑️</button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -117,56 +120,36 @@ export default function UserPanel({ onClose }) {
         </table>
       </div>
 
-      {/* Modal para nuevo usuario */}
+      {/* MODAL NUEVO USUARIO */}
       {showAddModal && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title">➕ Nuevo Usuario</h3>
-              <button className="btn-icon" onClick={() => setShowAddModal(false)}>✕</button>
-            </div>
-            
-            <div className="form-group">
-              <label className="form-label">Usuario</label>
-              <input 
-                className="form-input"
-                value={newUser.username}
-                onChange={e => setNewUser({...newUser, username: e.target.value})}
-                placeholder="nombre_usuario"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Contraseña</label>
-              <input 
-                type="password"
-                className="form-input"
-                value={newUser.password}
-                onChange={e => setNewUser({...newUser, password: e.target.value})}
-                placeholder="••••••••"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Rol</label>
-              <select 
-                className="form-select"
-                value={newUser.rol}
-                onChange={e => setNewUser({...newUser, rol: e.target.value})}
-              >
-                <option value="viewer">Viewer (solo lectura)</option>
-                <option value="editor">Editor (puede editar)</option>
-                <option value="admin">Admin (todo)</option>
-              </select>
-            </div>
-
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
-                Cancelar
-              </button>
-              <button className="btn btn-primary" onClick={handleAddUser}>
-                Crear Usuario
-              </button>
+          <div className="modal card shadow-glow" onClick={e => e.stopPropagation()}>
+            <h3 className="mb-16">Crear Nuevo Acceso</h3>
+            <input 
+              className="form-input mb-12" 
+              placeholder="Nombre de usuario" 
+              value={newUser.username}
+              onChange={e => setNewUser({...newUser, username: e.target.value})}
+            />
+            <input 
+              type="password" 
+              className="form-input mb-12" 
+              placeholder="Contraseña inicial" 
+              value={newUser.password}
+              onChange={e => setNewUser({...newUser, password: e.target.value})}
+            />
+            <select 
+              className="form-input mb-16"
+              value={newUser.rol}
+              onChange={e => setNewUser({...newUser, rol: e.target.value})}
+            >
+              <option value="viewer">Viewer (Solo Lectura)</option>
+              <option value="editor">Editor (Carga de Datos)</option>
+              <option value="admin">Admin (Control Total)</option>
+            </select>
+            <div className="flex gap-8">
+              <button className="btn btn-secondary w-full" onClick={() => setShowAddModal(false)}>Cerrar</button>
+              <button className="btn btn-primary w-full" onClick={handleAddUser}>Guardar</button>
             </div>
           </div>
         </div>

@@ -1425,3 +1425,73 @@ body {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+/* Days remaining badge */
+.days-remaining {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Avenis', sans-serif;
+}
+
+.days-danger {
+  background: rgba(255, 71, 87, 0.15);
+  color: var(--red);
+  border: 1px solid rgba(255, 71, 87, 0.3);
+  animation: pulse 1s infinite;
+}
+
+.days-warn {
+  background: rgba(255, 165, 2, 0.15);
+  color: var(--yellow);
+  border: 1px solid rgba(255, 165, 2, 0.3);
+  animation: pulse 2s infinite;
+}
+
+.days-ok {
+  background: rgba(0, 212, 255, 0.15);
+  color: var(--accent3);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+}
+/* Licencias en Dashboard */
+.licencias-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.licencia-item {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.licencia-item strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.licencia-escuela {
+  color: var(--text2);
+  font-size: 12px;
+}
+
+.licencia-motivo {
+  color: var(--text3);
+  font-size: 11px;
+  font-style: italic;
+  margin-top: 4px;
+}
