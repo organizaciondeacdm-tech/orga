@@ -1,5 +1,6 @@
 // src/components/AddDocenteModal.jsx
 import { useState } from "react";
+// Opcional: import DayPicker from 'react-day-picker'; (si decidís usar la librería externa)
 
 export default function AddDocenteModal({ escuelaId, onClose, onSave }) {
   const [formData, setFormData] = useState({
@@ -7,7 +8,7 @@ export default function AddDocenteModal({ escuelaId, onClose, onSave }) {
     cargo: "Titular",
     estado: "Activo",
     jornada: "SIMPLE MAÑANA",
-    motivo: "-",
+    motivo: "",
     fechaInicioLicencia: "",
     fechaFinLicencia: ""
   });
@@ -15,21 +16,15 @@ export default function AddDocenteModal({ escuelaId, onClose, onSave }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const cargos = ["Titular", "Suplente", "Interino"];
-  const motivos = [
-    "-", "Art. 101 - Enfermedad", "Art. 102 - Familiar enfermo", 
-    "Art. 103 - Maternidad", "Art. 104 - Accidente de trabajo", 
-    "Art. 108 - Gremial", "Art. 115 - Estudio", "Art. 140 - Concurso", "Otro"
-  ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.nombreApellido.trim()) return alert("Nombre requerido");
+    if (!formData.nombreApellido.trim()) return alert("El nombre es obligatorio");
 
-    // Validación lógica de fechas
     if (formData.estado === "Licencia") {
       if (!formData.fechaInicioLicencia || !formData.fechaFinLicencia) {
-        return alert("Debe completar las fechas de licencia");
+        return alert("Debes completar el período de la licencia");
       }
       if (new Date(formData.fechaFinLicencia) < new Date(formData.fechaInicioLicencia)) {
         return alert("La fecha de fin no puede ser anterior al inicio");
@@ -39,7 +34,6 @@ export default function AddDocenteModal({ escuelaId, onClose, onSave }) {
     setIsSubmitting(true);
 
     try {
-      // Limpiamos datos si vuelve a estado Activo antes de enviar
       const finalDocente = { ...formData };
       if (finalDocente.estado === "Activo") {
         finalDocente.motivo = "-";
@@ -96,7 +90,7 @@ export default function AddDocenteModal({ escuelaId, onClose, onSave }) {
                 value={formData.cargo}
                 onChange={e => setFormData({...formData, cargo: e.target.value})}
               >
-                {cargos.map(c => <option key={c}>{c}</option>)}
+                {cargos.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
 
@@ -129,21 +123,21 @@ export default function AddDocenteModal({ escuelaId, onClose, onSave }) {
           </div>
 
           {formData.estado === "Licencia" && (
-            <div className="licencia-fields fade-in p-8 border rounded mb-12 bg-dark">
-              <div className="form-group mb-8">
-                <label className="form-label">Motivo</label>
-                <select
-                  className="form-select"
+            <div className="licencia-section fade-in p-12 border rounded bg-dark mb-12">
+              <div className="form-group mb-12">
+                <label className="form-label">Motivo de Licencia</label>
+                <textarea
+                  className="form-textarea"
                   value={formData.motivo}
                   onChange={e => setFormData({...formData, motivo: e.target.value})}
-                >
-                  {motivos.map(m => <option key={m}>{m}</option>)}
-                </select>
+                  placeholder="Ej: Art. 102 - Familiar enfermo, estudio, etc."
+                  rows="2"
+                />
               </div>
 
               <div className="form-row flex gap-8">
                 <div className="form-group flex-1">
-                  <label className="form-label">Desde</label>
+                  <label className="form-label">Inicio</label>
                   <input
                     type="date"
                     className="form-input"
@@ -152,7 +146,7 @@ export default function AddDocenteModal({ escuelaId, onClose, onSave }) {
                   />
                 </div>
                 <div className="form-group flex-1">
-                  <label className="form-label">Hasta</label>
+                  <label className="form-label">Fin</label>
                   <input
                     type="date"
                     className="form-input"

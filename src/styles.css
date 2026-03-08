@@ -1521,3 +1521,85 @@ body {
 .btn-danger:hover {
   background: rgba(255, 71, 87, 0.3);
 }
+/* ============================================================
+   SELECTOR DE RANGO DE FECHAS
+   ============================================================ */
+.date-range-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.date-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-inputs .form-input {
+  flex: 1;
+}
+
+.date-separator {
+  color: var(--text2);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.calendar-popup {
+  position: absolute;
+  z-index: 1000;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--glow2);
+  margin-top: 8px;
+}
+
+/* Estilos para el calendario (si usás react-day-picker) */
+.rdp {
+  --rdp-cell-size: 40px;
+  --rdp-accent-color: var(--accent);
+  --rdp-background-color: var(--bg2);
+  margin: 0;
+}
+
+.rdp-day_selected:not(.rdp-day_disabled):not(.rdp-day_outside) {
+  background-color: var(--accent);
+  color: var(--bg);
+}
+
+.rdp-day:hover:not(.rdp-day_disabled) {
+  background-color: var(--bg3);
+}
+/* En styles.css */
+.licencia-detalle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.licencia-motivo {
+  font-size: 11px;
+  color: var(--text2);
+  background: var(--bg2);
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: help;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.licencia-motivo:hover {
+  background: var(--bg3);
+  color: var(--text);
+  white-space: normal;
+  overflow: visible;
+  max-width: none;
+  position: relative;
+  z-index: 10;
+}

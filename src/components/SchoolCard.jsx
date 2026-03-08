@@ -7,7 +7,6 @@ export default function SchoolCard({ escuela, isAdmin, onDocenteAdded, onEdit, o
   const [expanded, setExpanded] = useState(false);
   const [showAddDocente, setShowAddDocente] = useState(false);
 
-  // Alerta visual si faltan datos críticos (Mail ACDM o Docentes)
   const hasAlerts = !escuela.acdmMail || !escuela.docentes || escuela.docentes.length === 0;
 
   const openMaps = (e) => {
@@ -50,17 +49,11 @@ export default function SchoolCard({ escuela, isAdmin, onDocenteAdded, onEdit, o
         <div className="school-card-body fade-in">
           <div className="contact-section">
             <p className="contact-row">
-              <strong>Email:</strong>{' '}
-              <span className="clickable text-link" onClick={(e) => handleMail(escuela.mail, e)}>
-                {escuela.mail || "No registrado"}
-              </span>
+              <strong>Email:</strong> <span className="clickable text-link" onClick={(e) => handleMail(escuela.mail, e)}>{escuela.mail || "No registrado"}</span>
             </p>
             {escuela.acdmMail && (
               <p className="contact-row">
-                <strong>ACDM:</strong>{' '}
-                <span className="clickable text-link" onClick={(e) => handleMail(escuela.acdmMail, e)}>
-                  {escuela.acdmMail}
-                </span>
+                <strong>ACDM:</strong> <span className="clickable text-link" onClick={(e) => handleMail(escuela.acdmMail, e)}>{escuela.acdmMail}</span>
               </p>
             )}
             <p className="contact-row">
@@ -73,10 +66,7 @@ export default function SchoolCard({ escuela, isAdmin, onDocenteAdded, onEdit, o
             <div className="flex justify-between items-center mb-8 border-bottom pb-4">
               <h4 className="title-rajdhani uppercase">Docentes ({escuela.docentes?.length || 0})</h4>
               {isAdmin && (
-                <button 
-                  className="btn btn-primary btn-sm"
-                  onClick={(e) => { e.stopPropagation(); setShowAddDocente(true); }}
-                >
+                <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); setShowAddDocente(true); }}>
                   ➕ Agregar
                 </button>
               )}
@@ -92,35 +82,35 @@ export default function SchoolCard({ escuela, isAdmin, onDocenteAdded, onEdit, o
                         {doc.estado}
                       </span>
                     </div>
-                    {doc.estado === "Licencia" && doc.fechaFinLicencia && (
-                      <DaysRemaining fechaFin={doc.fechaFinLicencia} />
+                    
+                    {doc.estado === "Licencia" && (
+                      <div className="licencia-detalle mt-4">
+                        <DaysRemaining fechaFin={doc.fechaFinLicencia} />
+                        {doc.motivo && doc.motivo !== "-" && (
+                          <span className="licencia-motivo text-small block mt-2" title={doc.motivo}>
+                            📝 {doc.motivo.length > 40 ? doc.motivo.substring(0, 40) + '…' : doc.motivo}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-muted italic p-8">Sin docentes asignados.</p>
+              <p className="text-muted italic p-8 text-center">Sin docentes asignados.</p>
             )}
           </div>
 
           {/* ACCIONES DE ESCUELA (Solo Admin) */}
           {isAdmin && (
             <div className="school-actions mt-16 pt-16 border-top flex gap-8">
-              <button 
-                className="btn btn-secondary btn-sm flex-1"
-                onClick={(e) => { e.stopPropagation(); onEdit(escuela); }}
-              >
+              <button className="btn btn-secondary btn-sm flex-1" onClick={(e) => { e.stopPropagation(); onEdit(escuela); }}>
                 ✏️ Editar Escuela
               </button>
-              <button 
-                className="btn btn-danger btn-sm flex-1"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (confirm(`¿Eliminar la escuela "${escuela.escuela}"?`)) {
-                    onDelete(escuela.id);
-                  }
-                }}
-              >
+              <button className="btn btn-danger btn-sm flex-1" onClick={(e) => {
+                e.stopPropagation();
+                if (confirm(`¿Eliminar la escuela "${escuela.escuela}"?`)) onDelete(escuela.id);
+              }}>
                 🗑️ Eliminar
               </button>
             </div>
