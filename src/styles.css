@@ -1503,3 +1503,21 @@ body {
 .items-center {
   align-items: center;
 }
+/* Acciones de escuela */
+.school-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.btn-danger {
+  background: rgba(255, 71, 87, 0.2);
+  color: var(--red);
+  border: 1px solid rgba(255, 71, 87, 0.3);
+}
+
+.btn-danger:hover {
+  background: rgba(255, 71, 87, 0.3);
+}

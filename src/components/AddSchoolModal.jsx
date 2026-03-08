@@ -106,6 +106,7 @@ export default function AddSchoolModal({ onClose, onSave }) {
               <option>SIMPLE MAÑANA</option>
               <option>SIMPLE TARDE</option>
               <option>SIMPLE MAÑANA Y TARDE</option>
+              <option>JORNADA COMPLETA</option>
             </select>
           </div>
         </div>
