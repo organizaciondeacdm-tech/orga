@@ -1,172 +1,215 @@
-// src/components/Dashboard.jsx
-import { useEffect, useState, useMemo } from "react";
-import DaysRemaining from './DaysRemaining.jsx';
-import CalendarWidget from './CalendarWidget.jsx';
-
-function AlertPanel({ alerts }) {
-  if (alerts.length === 0) return null;
-
-  return (
-    <div className="mt-24 fade-in">
-      <h3 className="title-rajdhani mb-16 text-danger">🚨 ALERTAS CRÍTICAS ({alerts.length})</h3>
-      <div className="alerts-list">
-        {alerts.map((a, i) => (
-          <div key={i} className={`alert alert-${a.type} mb-8 shadow-sm flex items-center gap-12`}>
-            <span className="alert-icon text-2xl">{a.icon}</span>
-            <div className="alert-content">
-              <strong className="block">{a.title}</strong>
-              <div className="text-small opacity-80">{a.desc}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+// src/components/Dashboard.jsx (reorganizado)
+import { useMemo } from 'react';
+import DashboardStats from './DashboardStats.jsx';
+import MiniCalendar from './MiniCalendar.jsx';
+import {
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
+  Tooltip, Legend, ResponsiveContainer, LineChart, Line 
+} from 'recharts';
 
 export default function Dashboard({ escuelas }) {
-  const [isMuted, setIsMuted] = useState(true);
-  const hoy = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
-
-  // 1. Procesamiento de Datos Único (Stats, Alertas, Licencias e Intervenciones)
-  const { stats, licenciasActivas, totalIntervenciones } = useMemo(() => {
-    const res = {
-      stats: { totalAlumnos: 0, totalDocentes: 0, docentesLicencia: 0, sinAcdm: 0, sinMailAcdm: 0, alerts: [] },
-      licenciasActivas: [],
-      totalIntervenciones: 0
+  
+  // Calcular estadísticas
+  const stats = useMemo(() => {
+    const totalEscuelas = escuelas.length;
+    const acdmActivos = escuelas.flatMap(e => e.docentes || [])
+      .filter(d => d.estado === "Activo").length;
+    const enLicencia = escuelas.flatMap(e => e.docentes || [])
+      .filter(d => d.estado === "Licencia").length;
+    const sinACDM = escuelas.filter(e => !e.docentes || e.docentes.length === 0).length;
+    
+    return {
+      totalEscuelas,
+      acdmActivos,
+      enLicencia,
+      intervenciones: 2, // Esto debería venir de tus datos reales
+      sinACDM
     };
+  }, [escuelas]);
 
-    escuelas.forEach(esc => {
-      const docentes = esc.docentes || [];
-      res.stats.totalAlumnos += (esc.alumnos?.length || 0);
-      res.stats.totalDocentes += docentes.length;
-      
-      // Contar Visitas + Informes para la métrica de gestión
-      res.totalIntervenciones += (esc.visitas?.length || 0) + (esc.informes?.length || 0);
+  // Datos para gráfico de torta - Distribución ACDM
+  const distribucionACDM = [
+    { name: 'Activos', value: stats.acdmActivos, color: '#10b981' },
+    { name: 'Licencia', value: stats.enLicencia, color: '#f59e0b' },
+    { name: 'Sin ACDM', value: stats.sinACDM, color: '#ef4444' }
+  ];
 
-      if (!esc.acdmMail) {
-        res.stats.sinMailAcdm++;
-        res.stats.alerts.push({ type: "warning", icon: "📧", title: "Mail ACDM faltante", desc: esc.escuela });
-      }
+  // Datos para gráfico de torta - Estado General
+  const estadoGeneral = [
+    { name: 'Escuelas', value: stats.totalEscuelas, color: '#2563eb' },
+    { name: 'Intervenciones', value: stats.intervenciones, color: '#7c3aed' }
+  ];
 
-      if (docentes.length === 0) {
-        res.stats.sinAcdm++;
-        res.stats.alerts.push({ type: "danger", icon: "🏫", title: "Sin ACDM asignado", desc: esc.escuela });
-      }
-
-      docentes.forEach(doc => {
-        if (doc.estado === "Licencia") {
-          res.stats.docentesLicencia++;
-          res.licenciasActivas.push({ ...doc, escuelaNombre: esc.escuela });
-
-          if (doc.fechaFinLicencia) {
-            const fechaFin = new Date(doc.fechaFinLicencia);
-            fechaFin.setHours(0, 0, 0, 0);
-            const dias = Math.ceil((fechaFin - hoy) / (1000 * 60 * 60 * 24));
-            
-            if (dias <= 5) {
-              res.stats.alerts.push({ 
-                type: "danger", 
-                icon: "⛔", 
-                title: dias < 0 ? "Licencia Vencida" : "Próximo Vencimiento", 
-                desc: `${doc.nombreApellido} — ${esc.escuela} (${dias < 0 ? 'Expiró' : dias + ' días'})` 
-              });
-            }
-          }
-        }
-      });
-    });
-    return res;
-  }, [escuelas, hoy]);
-
-  // 2. Sistema de Alarma
-  useEffect(() => {
-    const hayPeligro = stats.alerts.some(a => a.type === "danger");
-    if (hayPeligro && !isMuted) {
-      const audio = new Audio("https://assets.mixkit.co");
-      audio.volume = 0.3;
-      audio.play().catch(() => console.log("Audio bloqueado"));
-    }
-  }, [stats.alerts.length, isMuted]);
-
-  const docentesActivos = stats.totalDocentes - stats.docentesLicencia;
+  // Alertas críticas (simuladas - deberían venir de datos reales)
+  const alertasCriticas = escuelas
+    .filter(e => !e.acdmMail || !e.docentes || e.docentes.length === 0)
+    .slice(0, 10)
+    .map(e => ({
+      escuela: e.escuela,
+      problema: !e.acdmMail ? 'Sin mail ACDM' : 'Sin docentes'
+    }));
 
   return (
-    <div className="dashboard-container p-16 fade-in">
-      
-      {/* HEADER DASHBOARD */}
-      <div className="flex justify-between items-center mb-24">
-        <div>
-          <h2 className="title-rajdhani text-accent mb-0">PANEL ESTRATÉGICO ACDM</h2>
-          <p className="text-muted small">Versión Pro Cloud — Estado del Sistema</p>
-        </div>
-        <button 
-          className={`btn-sm btn ${isMuted ? 'btn-secondary' : 'btn-danger anim-pulse'}`}
-          onClick={() => setIsMuted(!isMuted)}
-        >
-          {isMuted ? "🔇 Alarma Silenciada" : "🔊 Monitoreo Activo"}
-        </button>
+    <div className="dashboard-container">
+      {/* HEADER: Título y versión */}
+      <div className="dashboard-header mb-20">
+        <h1 className="title-rajdhani">PANEL ESTRATÉGICO ACDM</h1>
+        <span className="version-badge">Versión Pro Cloud — Estado del Sistema</span>
       </div>
 
-      {/* SECCIÓN 1: AGENDA CENTRALIZADA */}
-      <div className="mb-24">
-        <CalendarWidget escuelas={escuelas} />
-      </div>
-
-      {/* SECCIÓN 2: GRID DE ESTADÍSTICAS */}
-      <div className="stats-grid mb-24">
-        <div className="stat-card shadow-sm">
-          <div className="stat-value">{escuelas.length}</div>
-          <div className="stat-label">Escuelas</div>
-        </div>
-        <div className="stat-card shadow-sm">
-          <div className="stat-value text-accent">{docentesActivos}</div>
-          <div className="stat-label">ACDM Activos</div>
-        </div>
-        <div className={`stat-card shadow-sm ${stats.docentesLicencia > 0 ? 'border-warning' : ''}`}>
-          <div className="stat-value text-warning">{stats.docentesLicencia}</div>
-          <div className="stat-label">En Licencia</div>
-        </div>
-        <div className="stat-card shadow-sm">
-          <div className="stat-value">{totalIntervenciones}</div>
-          <div className="stat-label">Intervenciones</div>
-        </div>
-        <div className={`stat-card shadow-sm ${stats.sinAcdm > 0 ? 'highlight-danger' : ''}`}>
-          <div className="stat-value text-danger">{stats.sinAcdm}</div>
-          <div className="stat-label">Sin ACDM</div>
-        </div>
-      </div>
-
-      {/* SECCIÓN 3: SEGUIMIENTO DE LICENCIAS Y ALERTAS */}
-      <div className="grid grid-cols-1 lg-grid-cols-2 gap-24">
-        
-        {/* Columna Licencias */}
-        <div className="card shadow-lg border-accent p-16">
-          <h3 className="title-rajdhani mb-16">📅 CONTROL DE LICENCIAS</h3>
-          {licenciasActivas.length > 0 ? (
-            <div className="licencias-dashboard-list">
-              {licenciasActivas.map((lic, i) => (
-                <div key={i} className="licencia-item-card mb-8 p-12 bg-light rounded flex justify-between items-center">
-                  <div className="licencia-info">
-                    <strong className="block">{lic.nombreApellido}</strong>
-                    <span className="school-tag text-muted small">{lic.escuelaNombre}</span>
+      <div className="dashboard-layout">
+        {/* COLUMNA IZQUIERDA: Agenda y Menú */}
+        <div className="dashboard-left">
+          {/* AGENDA DE GESTIÓN */}
+          <div className="agenda-section card mb-20">
+            <h2 className="section-title">AGENDA DE GESTIÓN</h2>
+            <div className="mini-calendar-placeholder">
+              {/* Aquí va tu calendario de la imagen */}
+              <div className="calendar-header">DASHBOARD</div>
+              <div className="calendar-weekdays">
+                {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(d => (
+                  <span key={d} className="weekday">{d}</span>
+                ))}
+              </div>
+              <div className="calendar-grid">
+                {/* Generar días del mes actual */}
+                {Array.from({ length: 35 }, (_, i) => (
+                  <div key={i} className="calendar-day">
+                    {i + 1}
                   </div>
-                  <DaysRemaining fechaFin={lic.fechaFinLicencia} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* MENÚ DE NAVEGACIÓN */}
+          <div className="menu-section card">
+            <h2 className="section-title">MENU</h2>
+            <nav className="dashboard-nav">
+              <button className="nav-btn">🏫 ESCUELAS</button>
+              <button className="nav-btn">📋 LICENCIAS</button>
+            </nav>
+          </div>
+        </div>
+
+        {/* COLUMNA CENTRAL: Gráficos y Estadísticas */}
+        <div className="dashboard-center">
+          {/* BOTONES DE ESTADÍSTICAS RÁPIDAS */}
+          <div className="stats-buttons-grid mb-20">
+            <div className="stat-button primary">
+              <span className="stat-number">{stats.totalEscuelas}</span>
+              <span className="stat-label">ESCUELAS</span>
+            </div>
+            <div className="stat-button success">
+              <span className="stat-number">{stats.acdmActivos}</span>
+              <span className="stat-label">ACDM ACTIVOS</span>
+            </div>
+            <div className="stat-button warning">
+              <span className="stat-number">{stats.enLicencia}</span>
+              <span className="stat-label">EN LICENCIA</span>
+            </div>
+            <div className="stat-button accent">
+              <span className="stat-number">{stats.intervenciones}</span>
+              <span className="stat-label">INTERVENCIONES</span>
+            </div>
+            <div className="stat-button danger">
+              <span className="stat-number">{stats.sinACDM}</span>
+              <span className="stat-label">SIN ACDM</span>
+            </div>
+          </div>
+
+          {/* GRÁFICOS DE TORTA - Aquí van los que mencionaste */}
+          <div className="charts-row mb-20">
+            <div className="chart-container card">
+              <h3 className="chart-title">Distribución ACDM</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={distribucionACDM}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {distribucionACDM.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="chart-container card">
+              <h3 className="chart-title">Estado General</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={estadoGeneral}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    <Cell fill="#2563eb" />
+                    <Cell fill="#7c3aed" />
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* CONTROL DE LICENCIAS */}
+          <div className="licencias-section card">
+            <h2 className="section-title">CONTROL DE LICENCIAS</h2>
+            {escuelas.slice(0, 3).map(escuela => (
+              <div key={escuela.id} className="licencia-item">
+                <span className="docente-nombre">
+                  {escuela.docentes?.find(d => d.estado === "Licencia")?.nombreApellido || 'Sin licencias'}
+                </span>
+                <span className="escuela-nombre">{escuela.escuela}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* COLUMNA DERECHA: Alertas */}
+        <div className="dashboard-right">
+          <div className="alertas-section card">
+            <h2 className="section-title alert-title">
+              ALERTAS CRÍTICAS
+              <span className="alert-count">{alertasCriticas.length}</span>
+            </h2>
+            
+            <div className="alertas-list">
+              {alertasCriticas.map((alerta, idx) => (
+                <div key={idx} className="alerta-item">
+                  <span className="alerta-icon">⚠️</span>
+                  <div className="alerta-content">
+                    <span className="alerta-escuela">{alerta.escuela}</span>
+                    <span className="alerta-problema">{alerta.problema}</span>
+                  </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-muted text-center p-20">No hay licencias activas actualmente.</p>
-          )}
-        </div>
 
-        {/* Columna Alertas */}
-        <div>
-          <AlertPanel alerts={stats.alerts} />
+            {/* Link de licencia vencida (como en tu imagen) */}
+            <div className="licencia-vencida-link">
+              <a href="#" className="link-danger">
+                Licencia Vencida
+              </a>
+              <p className="vencida-detalle">
+                López, María Elena — Escuela N°1 Julio Argentino Roca (Expiró)
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

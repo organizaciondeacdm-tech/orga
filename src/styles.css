@@ -2903,3 +2903,246 @@ body {
   background: var(--warning) !important;
   color: white !important;
 }
+/* Agregar a styles.css */
+
+.dashboard-container {
+  padding: 1.5rem;
+}
+
+.dashboard-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.dashboard-header h1 {
+  font-size: 1.8rem;
+  margin-bottom: 0.25rem;
+}
+
+.version-badge {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr 280px;
+  gap: 1.5rem;
+}
+
+@media (max-width: 1200px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Columnas */
+.dashboard-left,
+.dashboard-center,
+.dashboard-right {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Tarjetas */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--border-radius-lg);
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Calendario */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 0.5rem;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.calendar-day:hover {
+  background: var(--primary-light);
+  color: white;
+}
+
+/* Botones de estadísticas */
+.stats-buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.75rem;
+}
+
+.stat-button {
+  padding: 1rem 0.5rem;
+  border-radius: var(--border-radius-md);
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.stat-button:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+.stat-button .stat-number {
+  display: block;
+  font-size: 1.8rem;
+  font-weight: bold;
+  line-height: 1.2;
+}
+
+.stat-button .stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.stat-button.primary { background: #2563eb; color: white; }
+.stat-button.success { background: #10b981; color: white; }
+.stat-button.warning { background: #f59e0b; color: white; }
+.stat-button.accent { background: #7c3aed; color: white; }
+.stat-button.danger { background: #ef4444; color: white; }
+
+/* Gráficos */
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.chart-container {
+  padding: 1rem;
+  height: 280px;
+}
+
+.chart-title {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Licencias */
+.licencia-item {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.docente-nombre {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.escuela-nombre {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* Alertas */
+.alert-title {
+  color: var(--danger);
+}
+
+.alert-count {
+  background: var(--danger);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+}
+
+.alertas-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.alerta-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.alerta-icon {
+  font-size: 1.1rem;
+}
+
+.alerta-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.alerta-escuela {
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.alerta-problema {
+  font-size: 0.8rem;
+  color: var(--danger);
+}
+
+.licencia-vencida-link {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: var(--border-radius-md);
+}
+
+.link-danger {
+  color: var(--danger);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.vencida-detalle {
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+  color: var(--text-muted);
+}
+
+/* Navegación */
+.nav-btn {
+  width: 100%;
+  padding: 0.75rem;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-radius: var(--border-radius-sm);
+  transition: var(--transition);
+}
+
+.nav-btn:hover {
+  background: var(--bg-tertiary);
+}
