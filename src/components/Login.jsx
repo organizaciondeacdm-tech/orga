@@ -1,52 +1,80 @@
-// src/components/Login.jsx
-import { useState } from "react";
+// src/components/Login.jsx (versión mejorada)
+import { useState } from 'react';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Login({ onLogin }) {
-  const [user, setUser] = useState("");
-  const [pass, setPass] = useState("");
-  const [err, setErr] = useState("");
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [contrast, setContrast] = useState('normal'); // 'normal' | 'high'
+  
+  const { theme } = useTheme();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (user === "admin" && pass === "admin2025") {
-      onLogin({ username: "admin", rol: "admin" });
+    
+    // Validación simple (ajustá según tu lógica)
+    if (username && password) {
+      onLogin({ username, rol: 'user' });
     } else {
-      setErr("Credenciales incorrectas");
+      setError('Ingresá usuario y contraseña');
     }
   };
 
   return (
     <div className="login-container">
-      <video autoPlay muted loop playsInline className="login-video">
-        <source src="/papiweb.mp4" type="video/mp4" />
-      </video>
-      <div className="login-overlay">
-        <div className="login-box">
-          <div className="papiweb-logo" style={{ display: 'inline-block', marginBottom: 20 }}>
-            <span className="papiweb-text">PAPIWEB</span>
-          </div>
-          <h2 className="login-title">Sistema ACDM</h2>
-          <p className="login-sub">Gestión de Asistentes de Clase</p>
+      <div className="login-card">
+        {/* Logo o ícono opcional */}
+        <div className="login-logo mb-20">
+          <span className="logo-icon">🏫</span>
+        </div>
 
-          <form onSubmit={handleSubmit}>
-            <input 
-              type="text" 
-              placeholder="Usuario" 
-              value={user} 
-              onChange={e => setUser(e.target.value)} 
-              autoFocus
-            />
-            <input 
-              type="password" 
-              placeholder="Contraseña" 
-              value={pass} 
-              onChange={e => setPass(e.target.value)} 
-            />
-            {err && <div className="alert alert-danger">⚠️ {err}</div>}
-            <button type="submit" className="btn-login-cloud">
-              INGRESAR
-            </button>
-          </form>
+        {/* Títulos con buen contraste */}
+        <h1>PAPIWEB</h1>
+        <h2 className={contrast === 'high' ? 'high-contrast' : ''}>
+          SISTEMA ACDM
+        </h2>
+        
+        {/* Control de contraste (opcional) */}
+        <button 
+          className="contrast-toggle"
+          onClick={() => setContrast(prev => prev === 'normal' ? 'high' : 'normal')}
+          title="Alternar contraste"
+        >
+          {contrast === 'normal' ? '🔆' : '⚡'}
+        </button>
+
+        {/* Formulario */}
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            className="login-input"
+            placeholder="Usuario"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoFocus
+          />
+          
+          <input
+            type="password"
+            className="login-input"
+            placeholder="Contraseña"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          
+          {error && <div className="login-error">{error}</div>}
+          
+          <button type="submit" className="login-button">
+            Ingresar al Sistema
+          </button>
+        </form>
+
+        {/* Versión y créditos */}
+        <div className="login-footer mt-20">
+          <small className="text-muted">
+            PAPIWEB ACDM v2.4 Pro
+          </small>
         </div>
       </div>
     </div>
