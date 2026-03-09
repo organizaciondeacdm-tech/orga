@@ -1,42 +1,19 @@
-// src/components/SeguimientoPanel.jsx - InformeForm CORREGIDO
-// Papiweb exportación directa:
-export default function SeguimientoPanel({ escuela, isAdmin, onUpdate }) {
-  // ... todo el código del componente ...
-}
-function InformeForm({ docentes, onSave, onClose }) {
+// src/components/SeguimientoPanel.jsx - VERSIÓN COMPLETA Y FUNCIONAL
+import { useState } from "react";
+
+// --- FORMULARIO DE VISITA ---
+function VisitaForm({ docentes, onSave, onClose }) {
   const [form, setForm] = useState({
-    titulo: "",
+    fecha: new Date().toISOString().split('T')[0],
     acdmId: "",
     acdmNombre: "",
-    fechaEntrega: new Date().toISOString().split('T')[0],
-    contenido: "",
-    tipo: "informe",
-    estado: "entregado",
-    id: `i${Date.now()}`
+    observacion: "",
+    id: `v${Date.now()}`
   });
 
-  const [errors, setErrors] = useState({});
-  const [buscador, setBuscador] = useState("");
-
-  // Filtrar docentes para búsqueda
-  const docentesFiltrados = useMemo(() => {
-    if (!buscador.trim()) return docentes;
-    return docentes.filter(d => 
-      d.nombreApellido?.toLowerCase().includes(buscador.toLowerCase())
-    );
-  }, [docentes, buscador]);
-
-  const validate = () => {
-    const newErrors = {};
-    if (!form.titulo.trim()) newErrors.titulo = "El título es obligatorio";
-    if (!form.acdmId) newErrors.acdmId = "Debe seleccionar un autor";
-    return newErrors;
-  };
-
   const handleSubmit = () => {
-    const validationErrors = validate();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
+    if (!form.acdmId || !form.observacion) {
+      alert('Completá todos los campos');
       return;
     }
     onSave(form);
@@ -44,105 +21,263 @@ function InformeForm({ docentes, onSave, onClose }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal card shadow-glow" onClick={e => e.stopPropagation()}>
-        <h3 className="title-rajdhani mb-16">📄 SUBIR INFORME</h3>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <h3>📍 REGISTRAR VISITA</h3>
         
-        {/* Título del informe */}
-        <div className="form-group mb-12">
-          <label className="form-label">Título del informe *</label>
-          <input 
-            className="form-input" 
-            placeholder="Ej: Informe de seguimiento mensual"
-            value={form.titulo}
-            onChange={e => {
-              setForm({...form, titulo: e.target.value});
-              setErrors({...errors, titulo: null});
-            }}
-          />
-          {errors.titulo && <span className="error-text">{errors.titulo}</span>}
-        </div>
+        <select 
+          className="form-input"
+          onChange={(e) => {
+            const d = docentes.find(doc => doc.id === e.target.value);
+            setForm({...form, acdmId: d.id, acdmNombre: d.nombreApellido});
+          }}
+        >
+          <option value="">Seleccionar ACDM...</option>
+          {docentes.map(d => <option key={d.id} value={d.id}>{d.nombreApellido}</option>)}
+        </select>
 
-        {/* BUSCADOR DE AUTOR - ESTO ES LO QUE FALTA */}
-        <div className="form-group mb-12">
-          <label className="form-label">Buscar autor *</label>
-          <input
-            type="text"
-            className="form-input"
-            placeholder="Escribí para buscar..."
-            value={buscador}
-            onChange={(e) => setBuscador(e.target.value)}
-          />
-        </div>
+        <textarea 
+          className="form-input mt-12"
+          placeholder="Observaciones"
+          onChange={(e) => setForm({...form, observacion: e.target.value})}
+        />
 
-        {/* Selector de autor con búsqueda */}
-        <div className="form-group mb-16">
-          <label className="form-label">Seleccionar autor *</label>
-          <select 
-            className="form-select"
-            value={form.acdmId}
-            onChange={(e) => {
-              const d = docentes.find(doc => doc.id === e.target.value);
-              setForm({
-                ...form, 
-                acdmId: d?.id || '', 
-                acdmNombre: d?.nombreApellido || ''
-              });
-              setErrors({...errors, acdmId: null});
-              setBuscador(""); // Limpiar búsqueda
-            }}
-          >
-            <option value="">Seleccionar autor...</option>
-            {docentesFiltrados.map(d => (
-              <option key={d.id} value={d.id}>
-                {d.nombreApellido} - {d.estado || 'Activo'}
-              </option>
-            ))}
-          </select>
-          {errors.acdmId && <span className="error-text">{errors.acdmId}</span>}
-          
-          {/* Mostrar cantidad de resultados */}
-          {buscador && (
-            <small className="result-count">
-              {docentesFiltrados.length} resultados encontrados
-            </small>
-          )}
-        </div>
-
-        {/* Autor seleccionado (feedback visual) */}
-        {form.acdmNombre && (
-          <div className="autor-seleccionado mb-12 p-8 border-left-accent">
-            <span className="badge badge-success">✓ Autor seleccionado:</span>
-            <strong className="ml-8">{form.acdmNombre}</strong>
-          </div>
-        )}
-
-        {/* Fecha de entrega */}
-        <div className="form-group mb-16">
-          <label className="form-label">Fecha de entrega</label>
-          <input 
-            type="date"
-            className="form-input"
-            value={form.fechaEntrega}
-            onChange={e => setForm({...form, fechaEntrega: e.target.value})}
-          />
-        </div>
-
-        {/* Botones de acción */}
-        <div className="flex gap-8">
-          <button 
-            className="btn btn-primary w-full" 
-            onClick={handleSubmit}
-          >
-            📤 Subir Informe
-          </button>
-          <button 
-            className="btn btn-secondary w-full" 
-            onClick={onClose}
-          >
-            ✖️ Cancelar
-          </button>
+        <div className="flex gap-8 mt-16">
+          <button className="btn btn-primary" onClick={handleSubmit}>Guardar</button>
+          <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// --- FORMULARIO DE PROYECTO ---
+function ProyectoForm({ docentes, onSave, onClose }) {
+  const [form, setForm] = useState({
+    nombre: "",
+    acdmResponsable: "",
+    acdmNombre: "",
+    fechaInicio: new Date().toISOString().split('T')[0],
+    id: `p${Date.now()}`
+  });
+
+  const handleSubmit = () => {
+    if (!form.nombre || !form.acdmResponsable) {
+      alert('Completá todos los campos');
+      return;
+    }
+    onSave(form);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <h3>🚀 NUEVO PROYECTO</h3>
+        
+        <input 
+          className="form-input"
+          placeholder="Nombre del proyecto"
+          onChange={(e) => setForm({...form, nombre: e.target.value})}
+        />
+
+        <select 
+          className="form-input mt-12"
+          onChange={(e) => {
+            const d = docentes.find(doc => doc.id === e.target.value);
+            setForm({...form, acdmResponsable: d.id, acdmNombre: d.nombreApellido});
+          }}
+        >
+          <option value="">Responsable...</option>
+          {docentes.map(d => <option key={d.id} value={d.id}>{d.nombreApellido}</option>)}
+        </select>
+
+        <div className="flex gap-8 mt-16">
+          <button className="btn btn-primary" onClick={handleSubmit}>Crear</button>
+          <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- FORMULARIO DE INFORME ---
+function InformeForm({ docentes, onSave, onClose }) {
+  const [form, setForm] = useState({
+    titulo: "",
+    acdmId: "",
+    acdmNombre: "",
+    fechaEntrega: new Date().toISOString().split('T')[0],
+    id: `i${Date.now()}`
+  });
+
+  const handleSubmit = () => {
+    if (!form.titulo || !form.acdmId) {
+      alert('Completá todos los campos');
+      return;
+    }
+    onSave(form);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <h3>📄 SUBIR INFORME</h3>
+        
+        <input 
+          className="form-input"
+          placeholder="Título del informe"
+          onChange={(e) => setForm({...form, titulo: e.target.value})}
+        />
+
+        <select 
+          className="form-input mt-12"
+          onChange={(e) => {
+            const d = docentes.find(doc => doc.id === e.target.value);
+            setForm({...form, acdmId: d.id, acdmNombre: d.nombreApellido});
+          }}
+        >
+          <option value="">Autor...</option>
+          {docentes.map(d => <option key={d.id} value={d.id}>{d.nombreApellido}</option>)}
+        </select>
+
+        <div className="flex gap-8 mt-16">
+          <button className="btn btn-primary" onClick={handleSubmit}>Subir</button>
+          <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- COMPONENTE PRINCIPAL SEGUIMIENTOPANEL ---
+export default function SeguimientoPanel({ escuela, isAdmin, onUpdate }) {
+  const [activeTab, setActiveTab] = useState("visitas");
+  const [showForm, setShowForm] = useState(false);
+
+  // Inicializar arrays si no existen
+  const visitas = escuela.visitas || [];
+  const proyectos = escuela.proyectos || [];
+  const informes = escuela.informes || [];
+
+  const handleAddData = async (tipo, newData) => {
+    const key = tipo + 's'; // visita -> visitas, proyecto -> proyectos
+    const updatedEscuela = {
+      ...escuela,
+      [key]: [...(escuela[key] || []), newData]
+    };
+    await onUpdate(updatedEscuela);
+    setShowForm(false);
+  };
+
+  const getFormType = () => {
+    if (activeTab === 'visitas') return 'visita';
+    if (activeTab === 'proyectos') return 'proyecto';
+    return 'informe';
+  };
+
+  return (
+    <div className="seguimiento-panel">
+      {/* Tabs de navegación */}
+      <div className="tabs-container small">
+        {["visitas", "proyectos", "informes"].map(tab => (
+          <button
+            key={tab}
+            className={`tab-btn small ${activeTab === tab ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab === 'visitas' && '📍'}
+            {tab === 'proyectos' && '🚀'}
+            {tab === 'informes' && '📄'}
+            {tab.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
+      {/* Header con botón Nuevo */}
+      <div className="flex justify-between items-center mt-12 mb-12">
+        <h4 className="title-rajdhani small">{activeTab.toUpperCase()}</h4>
+        {isAdmin && (
+          <button 
+            className="btn btn-primary btn-sm"
+            onClick={() => setShowForm(getFormType())}
+          >
+            ➕ NUEVO
+          </button>
+        )}
+      </div>
+
+      {/* Listados según tab activo */}
+      {activeTab === 'visitas' && (
+        <div className="visitas-list">
+          {visitas.length === 0 ? (
+            <p className="text-muted text-center p-20">No hay visitas registradas</p>
+          ) : (
+            visitas.map(v => (
+              <div key={v.id} className="item-card">
+                <div className="item-header">
+                  <span className="item-date">{v.fecha}</span>
+                  <span className="item-author">{v.acdmNombre}</span>
+                </div>
+                <p className="item-text">{v.observacion}</p>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {activeTab === 'proyectos' && (
+        <div className="proyectos-list">
+          {proyectos.length === 0 ? (
+            <p className="text-muted text-center p-20">No hay proyectos registrados</p>
+          ) : (
+            proyectos.map(p => (
+              <div key={p.id} className="item-card">
+                <strong>{p.nombre}</strong>
+                <p className="item-meta">Responsable: {p.acdmNombre}</p>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {activeTab === 'informes' && (
+        <div className="informes-list">
+          {informes.length === 0 ? (
+            <p className="text-muted text-center p-20">No hay informes registrados</p>
+          ) : (
+            informes.map(i => (
+              <div key={i.id} className="item-card">
+                <strong>{i.titulo}</strong>
+                <p className="item-meta">Autor: {i.acdmNombre} - {i.fechaEntrega}</p>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Modales */}
+      {showForm === 'visita' && (
+        <VisitaForm
+          docentes={escuela.docentes || []}
+          onSave={(data) => handleAddData('visita', data)}
+          onClose={() => setShowForm(false)}
+        />
+      )}
+
+      {showForm === 'proyecto' && (
+        <ProyectoForm
+          docentes={escuela.docentes || []}
+          onSave={(data) => handleAddData('proyecto', data)}
+          onClose={() => setShowForm(false)}
+        />
+      )}
+
+      {showForm === 'informe' && (
+        <InformeForm
+          docentes={escuela.docentes || []}
+          onSave={(data) => handleAddData('informe', data)}
+          onClose={() => setShowForm(false)}
+        />
+      )}
     </div>
   );
 }
