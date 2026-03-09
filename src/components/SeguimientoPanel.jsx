@@ -1,16 +1,22 @@
 // src/components/SeguimientoPanel.jsx
 import { useState } from "react";
 
-// --- SUB-COMPONENTES DE FORMULARIO (Definidos aquí para evitar ReferenceError) ---
+// --- SUB-COMPONENTES DE FORMULARIO ---
 
-function VisitaForm({ docentes, onSave, onClose }) {
+function VisitaForm({ docentes = [], onSave, onClose }) {
   const [form, setForm] = useState({
     fecha: new Date().toISOString().split('T')[0],
     acdmId: "",
+    acdmNombre: "",
     tipo: "seguimiento",
     observacion: "",
     id: `v${Date.now()}`
   });
+
+  const handleConfirm = () => {
+    if (!form.acdmId || !form.observacion) return alert("Completar profesional y observación");
+    onSave(form);
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -18,7 +24,7 @@ function VisitaForm({ docentes, onSave, onClose }) {
         <h3 className="title-rajdhani mb-16">📍 REGISTRAR VISITA</h3>
         <div className="form-group mb-12">
           <label className="form-label">Profesional Interviniente</label>
-          <select className="form-select" onChange={e => {
+          <select className="form-select" value={form.acdmId} onChange={e => {
             const d = docentes.find(doc => doc.id === e.target.value);
             setForm({...form, acdmId: d.id, acdmNombre: d.nombreApellido});
           }}>
@@ -28,10 +34,10 @@ function VisitaForm({ docentes, onSave, onClose }) {
         </div>
         <div className="form-group mb-12">
           <label className="form-label">Observaciones</label>
-          <textarea className="form-textarea" rows="4" onChange={e => setForm({...form, observacion: e.target.value})} />
+          <textarea className="form-textarea" rows="4" placeholder="Detalle de la intervención..." onChange={e => setForm({...form, observacion: e.target.value})} />
         </div>
         <div className="flex gap-8">
-          <button className="btn btn-primary w-full" onClick={() => onSave(form)}>Confirmar</button>
+          <button className="btn btn-primary w-full" onClick={handleConfirm}>Confirmar</button>
           <button className="btn btn-secondary w-full" onClick={onClose}>Cancelar</button>
         </div>
       </div>
@@ -39,13 +45,12 @@ function VisitaForm({ docentes, onSave, onClose }) {
   );
 }
 
-function ProyectoForm({ docentes, onSave, onClose }) {
+function ProyectoForm({ docentes = [], onSave, onClose }) {
   const [form, setForm] = useState({
     nombre: "",
     descripcion: "",
     acdmResponsable: "",
     fechaInicio: new Date().toISOString().split('T')[0],
-    fechaEntrega: "",
     estado: "en_progreso",
     avance: 0,
     id: `p${Date.now()}`
@@ -70,7 +75,7 @@ function ProyectoForm({ docentes, onSave, onClose }) {
   );
 }
 
-function InformeForm({ docentes, onSave, onClose }) {
+function InformeForm({ docentes = [], onSave, onClose }) {
   const [form, setForm] = useState({
     titulo: "",
     acdmId: "",
@@ -102,7 +107,7 @@ function InformeForm({ docentes, onSave, onClose }) {
 
 export default function SeguimientoPanel({ escuela, isAdmin, onUpdate }) {
   const [activeTab, setActiveTab] = useState("visitas");
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(null); // null | 'visitas' | 'proyectos' | 'informes'
 
   const handleAddData = async (key, newData) => {
     const updatedEscuela = {
@@ -110,7 +115,7 @@ export default function SeguimientoPanel({ escuela, isAdmin, onUpdate }) {
       [key]: [...(escuela[key] || []), newData]
     };
     await onUpdate(updatedEscuela);
-    setShowForm(false);
+    setShowForm(null);
   };
 
   return (
@@ -129,7 +134,7 @@ export default function SeguimientoPanel({ escuela, isAdmin, onUpdate }) {
 
       <div className="tab-content">
         <div className="flex justify-between items-center mb-12">
-          <h4 className="title-rajdhani uppercase">{activeTab} Registrados</h4>
+          <h4 className="title-rajdhani uppercase text-accent">{activeTab} Registrados</h4>
           {isAdmin && (
             <button className="btn btn-primary btn-sm" onClick={() => setShowForm(activeTab)}>
               ➕ Nuevo
@@ -140,12 +145,12 @@ export default function SeguimientoPanel({ escuela, isAdmin, onUpdate }) {
         {/* LISTADO DE VISITAS */}
         {activeTab === "visitas" && (
           <div className="timeline">
-            {(escuela.visitas || []).length === 0 ? <p className="text-muted">Sin visitas.</p> : (
+            {(escuela.visitas || []).length === 0 ? <p className="text-muted text-center p-16">Sin visitas registradas.</p> : (
               escuela.visitas.map(v => (
-                <div key={v.id} className="timeline-item shadow-sm">
+                <div key={v.id} className="timeline-item shadow-sm border-left-accent">
                   <div className="text-accent small font-bold">{v.fecha}</div>
-                  <strong>{v.acdmNombre}</strong>
-                  <p className="text-small italic">{v.observacion}</p>
+                  <div className="font-bold">{v.acdmNombre || "ACDM No especificado"}</div>
+                  <p className="text-small italic text-muted mt-4">{v.observacion}</p>
                 </div>
               ))
             )}
@@ -155,12 +160,17 @@ export default function SeguimientoPanel({ escuela, isAdmin, onUpdate }) {
         {/* LISTADO DE PROYECTOS */}
         {activeTab === "proyectos" && (
           <div className="proyectos-grid">
-            {(escuela.proyectos || []).length === 0 ? <p className="text-muted">Sin proyectos.</p> : (
+            {(escuela.proyectos || []).length === 0 ? <p className="text-muted text-center p-16">Sin proyectos activos.</p> : (
               escuela.proyectos.map(p => (
-                <div key={p.id} className="proyecto-card border">
-                  <strong>{p.nombre}</strong>
-                  <div className="avance-bar mt-8"><div className="avance-fill" style={{width: `${p.avance}%`}}></div></div>
-                  <small>{p.avance}% completado</small>
+                <div key={p.id} className="proyecto-card border p-12 mb-8 rounded shadow-sm">
+                  <div className="flex justify-between">
+                    <strong>{p.nombre}</strong>
+                    <span className="badge badge-active">{p.estado}</span>
+                  </div>
+                  <div className="avance-bar mt-8 bg-gray-200 rounded-full h-2">
+                    <div className="avance-fill bg-primary h-2 rounded-full" style={{width: `${p.avance}%`}}></div>
+                  </div>
+                  <div className="text-right"><small className="text-muted">{p.avance}% completado</small></div>
                 </div>
               ))
             )}
@@ -170,11 +180,14 @@ export default function SeguimientoPanel({ escuela, isAdmin, onUpdate }) {
         {/* LISTADO DE INFORMES */}
         {activeTab === "informes" && (
           <div className="informes-lista">
-            {(escuela.informes || []).length === 0 ? <p className="text-muted">Sin informes.</p> : (
+            {(escuela.informes || []).length === 0 ? <p className="text-muted text-center p-16">No hay informes cargados.</p> : (
               escuela.informes.map(i => (
-                <div key={i.id} className="informe-item border-bottom">
-                  📄 <strong>{i.titulo}</strong>
-                  <div className="text-muted small">{i.fechaEntrega}</div>
+                <div key={i.id} className="informe-item border-bottom p-8 flex justify-between items-center">
+                  <div>
+                    📄 <strong className="ml-4">{i.titulo}</strong>
+                    <div className="text-muted small">{i.fechaEntrega}</div>
+                  </div>
+                  <button className="btn-icon">👁️</button>
                 </div>
               ))
             )}
@@ -182,10 +195,10 @@ export default function SeguimientoPanel({ escuela, isAdmin, onUpdate }) {
         )}
       </div>
 
-      {/* MODALES DINÁMICOS */}
-      {showForm === 'visita' && <VisitaForm docentes={escuela.docentes} onSave={d => handleAddData('visitas', d)} onClose={() => setShowForm(false)} />}
-      {showForm === 'proyecto' && <ProyectoForm docentes={escuela.docentes} onSave={d => handleAddData('proyectos', d)} onClose={() => setShowForm(false)} />}
-      {showForm === 'informe' && <InformeForm docentes={escuela.docentes} onSave={d => handleAddData('informes', d)} onClose={() => setShowForm(false)} />}
+      {/* MODALES DINÁMICOS (Corregidos nombres de keys) */}
+      {showForm === 'visitas' && <VisitaForm docentes={escuela.docentes} onSave={d => handleAddData('visitas', d)} onClose={() => setShowForm(null)} />}
+      {showForm === 'proyectos' && <ProyectoForm docentes={escuela.docentes} onSave={d => handleAddData('proyectos', d)} onClose={() => setShowForm(null)} />}
+      {showForm === 'informes' && <InformeForm docentes={escuela.docentes} onSave={d => handleAddData('informes', d)} onClose={() => setShowForm(null)} />}
     </div>
   );
 }

@@ -57,7 +57,26 @@ export default function App() {
     }
   };
 
-  // 3. Lógica para AGREGAR DOCENTE
+  // 3. Lógica para ACTUALIZACIÓN GENERAL (Seguimiento, etc.)
+  const handleUpdateEscuela = async (escuelaActualizada) => {
+    try {
+      // Actualizamos el estado local usando la función de retorno para asegurar consistencia
+      setEscuelas(prevEscuelas => {
+        const nuevas = prevEscuelas.map(e => 
+          e.id === escuelaActualizada.id ? escuelaActualizada : e
+        );
+        // Guardamos en la nube la lista actualizada
+        saveEscuelas(nuevas); 
+        return nuevas;
+      });
+      console.log('✅ Cambio guardado:', escuelaActualizada.escuela);
+    } catch (error) {
+      console.error('Error al actualizar:', error);
+      alert('No se pudieron guardar los cambios en la nube');
+    }
+  };
+
+  // 4. Lógica para AGREGAR DOCENTE
   const handleDocenteAdded = async (escuelaId, nuevoDocente) => {
     const updatedEscuelas = escuelas.map(esc => 
       esc.id === escuelaId 
@@ -68,7 +87,7 @@ export default function App() {
     await saveEscuelas(updatedEscuelas);
   };
 
-  // 4. Guardar/Actualizar Escuela (Conserva docentes existentes al editar)
+  // 5. Guardar/Actualizar Escuela desde Modal
   const handleSaveSchool = async (schoolData) => {
     let updated;
     if (escuelaModal.isNew) {
@@ -76,7 +95,7 @@ export default function App() {
     } else {
       updated = escuelas.map(e => 
         e.id === schoolData.id 
-          ? { ...e, ...schoolData } // Mantiene e.docentes y e.alumnos originales si no vienen en schoolData
+          ? { ...e, ...schoolData } 
           : e
       );
     }
@@ -86,7 +105,7 @@ export default function App() {
     setEscuelaModal({ show: false, isNew: true, data: null });
   };
 
-  // 5. Filtro inteligente y Contadores
+  // 6. Filtro inteligente y Contadores
   const filteredEscuelas = useMemo(() => {
     const term = search.toLowerCase();
     return escuelas.filter(e => 
@@ -102,7 +121,7 @@ export default function App() {
       .filter(d => d.estado === "Licencia").length;
   }, [escuelas]);
 
-  // 6. Exportación a CSV con BOM para Excel
+  // 7. Exportación a CSV
   const exportToCSV = () => {
     const headers = ['Distrito', 'Escuela', 'Nivel', 'Dirección', 'Mail ACDM'];
     const rows = escuelas.map(esc => [esc.de, esc.escuela, esc.nivel, esc.direccion, esc.acdmMail]);
@@ -117,7 +136,7 @@ export default function App() {
     setTimeout(() => setShowExportSuccess(false), 3000);
   };
 
-  // Atajo de administrador (Backdoor)
+  // Atajo administrador (Ctrl+Alt+A)
   useEffect(() => {
     const handler = (e) => {
       if (e.ctrlKey && e.altKey && e.key === "a") setUser({ username: "admin_papiweb", rol: "admin" });
@@ -186,6 +205,7 @@ export default function App() {
                     onDocenteAdded={handleDocenteAdded}
                     onEdit={handleEditSchool}
                     onDelete={handleDeleteSchool}
+                    onUpdate={handleUpdateEscuela} // <--- INTEGRADO AQUÍ
                   />
                 ))}
               </div>

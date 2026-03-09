@@ -1,20 +1,20 @@
-// src/components/SchoolCard.jsx
 import { useState } from "react";
 import DaysRemaining from './DaysRemaining.jsx';
 import AddDocenteModal from './AddDocenteModal.jsx'; 
-import SeguimientoPanel from './SeguimientoPanel.jsx'; // Importamos el nuevo panel
+import SeguimientoPanel from './SeguimientoPanel.jsx';
 
 export default function SchoolCard({ escuela, isAdmin, onDocenteAdded, onEdit, onDelete, onUpdate }) {
   const [expanded, setExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState('docentes'); // 'docentes' | 'seguimiento'
   const [showAddDocente, setShowAddDocente] = useState(false);
 
+  // Alertas si faltan datos críticos
   const hasAlerts = !escuela.acdmMail || !escuela.docentes || escuela.docentes.length === 0;
 
   const openMaps = (e) => {
     e.stopPropagation();
     const query = encodeURIComponent(`${escuela.escuela}, ${escuela.direccion}, CABA`);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, "_blank", "noopener,noreferrer");
+    window.open(`https://www.google.com{query}`, "_blank", "noopener,noreferrer");
   };
 
   const handleMail = (mail, e) => {
@@ -27,7 +27,12 @@ export default function SchoolCard({ escuela, isAdmin, onDocenteAdded, onEdit, o
     <div className={`school-card ${expanded ? 'is-expanded' : ''} ${hasAlerts ? 'border-warning' : ''}`}>
       
       {/* HEADER DE LA TARJETA */}
-      <div className="school-card-header" onClick={() => setExpanded(!expanded)}>
+      <div 
+        className="school-card-header" 
+        onClick={() => setExpanded(!expanded)}
+        role="button"
+        tabIndex="0"
+      >
         <div className="header-info">
           <div className="school-de">Distrito Escolar {escuela.de}</div>
           <div className="school-name">{escuela.escuela}</div>
@@ -39,7 +44,7 @@ export default function SchoolCard({ escuela, isAdmin, onDocenteAdded, onEdit, o
           </div>
         </div>
         <div className="header-icons">
-           {hasAlerts && <span className="alert-icon">⚠️</span>}
+           {hasAlerts && <span className="alert-icon" title="Faltan datos de contacto o docentes">⚠️</span>}
            <span className="chevron-icon">{expanded ? '▲' : '▼'}</span>
         </div>
       </div>
@@ -47,6 +52,7 @@ export default function SchoolCard({ escuela, isAdmin, onDocenteAdded, onEdit, o
       {/* CUERPO EXPANDIDO */}
       {expanded && (
         <div className="school-card-body fade-in">
+          
           {/* INFO DE CONTACTO RÁPIDA */}
           <div className="contact-section shadow-sm">
             <span className="clickable" onClick={(e) => handleMail(escuela.mail, e)}>📧 {escuela.mail || "S/M"}</span>
@@ -122,13 +128,14 @@ export default function SchoolCard({ escuela, isAdmin, onDocenteAdded, onEdit, o
               <button className="btn btn-secondary btn-sm flex-1" onClick={(e) => { e.stopPropagation(); onEdit(escuela); }}>✏️ Editar Escuela</button>
               <button className="btn btn-danger btn-sm flex-1" onClick={(e) => {
                 e.stopPropagation();
-                if (confirm(`¿Eliminar la escuela "${escuela.escuela}"?`)) onDelete(escuela.id);
+                if (window.confirm(`¿Eliminar la escuela "${escuela.escuela}"?`)) onDelete(escuela.id);
               }}>🗑️ Eliminar</button>
             </div>
           )}
         </div>
       )}
 
+      {/* MODAL PARA AGREGAR DOCENTE */}
       {showAddDocente && (
         <AddDocenteModal
           escuelaId={escuela.id}
