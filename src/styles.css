@@ -3289,3 +3289,41 @@ body {
   background: #1e293b;
   border-color: #334155;
 }
+/* Agregar a styles.css */
+.border-left-accent {
+  border-left: 4px solid var(--primary);
+  background: var(--bg-tertiary);
+  border-radius: var(--border-radius-sm);
+}
+
+.autor-seleccionado {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.badge-success {
+  background: var(--success);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.8rem;
+}
+
+.result-count {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* Mejoras para el select */
+.form-select {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.form-select option {
+  padding: 8px;
+}
