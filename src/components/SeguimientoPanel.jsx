@@ -1,4 +1,8 @@
 // src/components/SeguimientoPanel.jsx - InformeForm CORREGIDO
+// Papiweb exportación directa:
+export default function SeguimientoPanel({ escuela, isAdmin, onUpdate }) {
+  // ... todo el código del componente ...
+}
 function InformeForm({ docentes, onSave, onClose }) {
   const [form, setForm] = useState({
     titulo: "",
