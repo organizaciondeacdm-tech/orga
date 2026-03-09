@@ -15,8 +15,8 @@ export default function SchoolCard({ escuela, isAdmin, onDocenteAdded, onEdit, o
   const openMaps = (e) => {
     e.stopPropagation();
     const query = encodeURIComponent(`${escuela.escuela}, ${escuela.direccion}, CABA`);
-    // Corregido: URL de Google Maps completa
-    window.open(`https://www.google.com{query}`, "_blank", "noopener,noreferrer");
+    /// ✅ Papiweb: Abrir Google Maps en una nueva pestaña con la ubicación de la escuela
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, "_blank", "noopener,noreferrer");
   };
 
   const handleMail = (mail, e) => {
