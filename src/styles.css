@@ -3199,3 +3199,93 @@ body {
   margin-top: 0.25rem;
   display: block;
 }
+/* Agregar a styles.css */
+.sound-played {
+  animation: pulse 2s infinite;
+  font-size: 1.2rem;
+  margin-left: 0.5rem;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0.6; transform: scale(1); }
+}
+
+.alerta-item {
+  transition: all 0.3s;
+  cursor: pointer;
+}
+
+.alerta-item:hover {
+  background: rgba(239, 68, 68, 0.1);
+  transform: translateX(4px);
+}
+/* Layout Pro de 3 Columnas */
+.dashboard-grid-main {
+  display: grid;
+  grid-template-columns: 280px 1fr 300px; /* Agenda | Gráficos | Alertas */
+  gap: 20px;
+  align-items: start;
+}
+
+/* Botones de Estadísticas con Brillo */
+.stats-buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.stat-btn {
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.stat-btn:hover { transform: translateY(-5px); }
+
+/* Efecto de cristal para los números */
+.stat-btn .num {
+  font-size: 2.5rem;
+  font-weight: 900;
+  font-family: 'Rajdhani', sans-serif;
+  line-height: 1;
+  display: block;
+  text-shadow: 0 0 15px rgba(255,255,255,0.3);
+}
+
+.stat-btn .lab {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  opacity: 0.9;
+}
+
+/* Colores de Marca Pro */
+.bg-primary { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+.bg-success { background: linear-gradient(135deg, #10b981, #059669); }
+.bg-warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.bg-danger  { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+/* Animación de Alerta Crítica */
+.border-danger {
+  border: 2px solid #ef4444 !important;
+  animation: border-pulse 2s infinite;
+}
+
+@keyframes border-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Gráfico con fondo oscuro si estás en Modo Dark */
+[data-theme='dark'] .chart-box {
+  background: #1e293b;
+  border-color: #334155;
+}

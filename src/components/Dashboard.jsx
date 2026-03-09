@@ -1,216 +1,144 @@
-// src/components/Dashboard.jsx (reorganizado)
-import { useMemo } from 'react';
-import DashboardStats from './DashboardStats.jsx';
+// src/components/Dashboard.jsx
+import { useMemo, useEffect, useState } from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import MiniCalendar from './MiniCalendar.jsx';
-import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
-  Tooltip, Legend, ResponsiveContainer, LineChart, Line 
-} from 'recharts';
+import DaysRemaining from './DaysRemaining.jsx';
+// Importamos el hook de sonido (asegurate de tenerlo creado)
+import { useAlertSound } from '../hooks/useAlertSound'; 
 
 export default function Dashboard({ escuelas }) {
-  
-  // Calcular estadísticas
-  const stats = useMemo(() => {
-    const totalEscuelas = escuelas.length;
-    const acdmActivos = escuelas.flatMap(e => e.docentes || [])
-      .filter(d => d.estado === "Activo").length;
-    const enLicencia = escuelas.flatMap(e => e.docentes || [])
-      .filter(d => d.estado === "Licencia").length;
-    const sinACDM = escuelas.filter(e => !e.docentes || e.docentes.length === 0).length;
-    
-    return {
-      totalEscuelas,
-      acdmActivos,
-      enLicencia,
-      intervenciones: 2, // Esto debería venir de tus datos reales
-      sinACDM
+  const { playAlertSound } = useAlertSound();
+  const [alertasMostradas, setAlertasMostradas] = useState({});
+
+  // 1. Cálculos de Estadísticas y Alertas
+  const { stats, alertasCriticas, licenciasVencidas } = useMemo(() => {
+    const res = {
+      stats: { total: escuelas.length, activos: 0, licencia: 0, sinACDM: 0, intervenciones: 0 },
+      alertasCriticas: [],
+      licenciasVencidas: []
     };
+
+    escuelas.forEach(e => {
+      const docentes = e.docentes || [];
+      const tieneLicencia = docentes.some(d => d.estado === "Licencia");
+      
+      res.stats.activos += docentes.filter(d => d.estado === "Activo").length;
+      res.stats.licencia += docentes.filter(d => d.estado === "Licencia").length;
+      res.stats.intervenciones += (e.visitas?.length || 0) + (e.informes?.length || 0);
+      
+      if (docentes.length === 0) {
+        res.stats.sinACDM++;
+        res.alertasCriticas.push({ id: e.id, escuela: e.escuela, tipo: 'Sin docentes asignados' });
+      }
+
+      docentes.forEach(d => {
+        if (d.estado === "Licencia" && d.fechaFinLicencia) {
+          const hoy = new Date();
+          const fin = new Date(d.fechaFinLicencia);
+          if (fin < hoy) res.licenciasVencidas.push({ ...d, escuelaNombre: e.escuela });
+        }
+      });
+    });
+
+    return res;
   }, [escuelas]);
 
-  // Datos para gráfico de torta - Distribución ACDM
-  const distribucionACDM = [
-    { name: 'Activos', value: stats.acdmActivos, color: '#10b981' },
-    { name: 'Licencia', value: stats.enLicencia, color: '#f59e0b' },
+  // 2. Lógica de Alertas Sonoras y Notificaciones
+  useEffect(() => {
+    alertasCriticas.forEach(alerta => {
+      if (!alertasMostradas[alerta.id]) {
+        playAlertSound('critical');
+        setAlertasMostradas(prev => ({ ...prev, [alerta.id]: true }));
+      }
+    });
+  }, [alertasCriticas, alertasMostradas, playAlertSound]);
+
+  // Datos para Gráfico de Torta
+  const dataPie = [
+    { name: 'Activos', value: stats.activos, color: '#10b981' },
+    { name: 'Licencia', value: stats.licencia, color: '#f59e0b' },
     { name: 'Sin ACDM', value: stats.sinACDM, color: '#ef4444' }
   ];
 
-  // Datos para gráfico de torta - Estado General
-  const estadoGeneral = [
-    { name: 'Escuelas', value: stats.totalEscuelas, color: '#2563eb' },
-    { name: 'Intervenciones', value: stats.intervenciones, color: '#7c3aed' }
-  ];
-
-  // Alertas críticas (simuladas - deberían venir de datos reales)
-  const alertasCriticas = escuelas
-    .filter(e => !e.acdmMail || !e.docentes || e.docentes.length === 0)
-    .slice(0, 10)
-    .map(e => ({
-      escuela: e.escuela,
-      problema: !e.acdmMail ? 'Sin mail ACDM' : 'Sin docentes'
-    }));
-
   return (
-    <div className="dashboard-container">
-      {/* HEADER: Título y versión */}
-      <div className="dashboard-header mb-20">
-        <h1 className="title-rajdhani">PANEL ESTRATÉGICO ACDM</h1>
-        <span className="version-badge">Versión Pro Cloud — Estado del Sistema</span>
+    <div className="dashboard-container fade-in">
+      <div className="dashboard-header mb-24">
+        <h1 className="title-rajdhani text-accent">PANEL ESTRATÉGICO ACDM</h1>
+        <span className="version-badge">PRO CLOUD v2.4 — ESTADO CRÍTICO</span>
       </div>
 
-      <div className="dashboard-layout">
-        {/* COLUMNA IZQUIERDA: Agenda y Menú */}
-        <div className="dashboard-left">
-          {/* AGENDA DE GESTIÓN */}
-          <div className="agenda-section card mb-20">
-            <h2 className="section-title">AGENDA DE GESTIÓN</h2>
-            <div className="mini-calendar-placeholder">
-              {/* Aquí va tu calendario de la imagen */}
-              <div className="calendar-header">DASHBOARD</div>
-              <div className="calendar-weekdays">
-                {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(d => (
-                  <span key={d} className="weekday">{d}</span>
-                ))}
-              </div>
-              <div className="calendar-grid">
-                {/* Generar días del mes actual */}
-                {Array.from({ length: 35 }, (_, i) => (
-                  <div key={i} className="calendar-day">
-                    {i + 1}
-                  </div>
-                ))}
-              </div>
-            </div>
+      <div className="dashboard-grid-main">
+        
+        {/* COLUMNA IZQUIERDA: Agenda y Alertas */}
+        <div className="dashboard-col">
+          <div className="card mb-20">
+            <h3 className="section-title">📅 AGENDA DE GESTIÓN</h3>
+            <MiniCalendar escuelas={escuelas} />
           </div>
 
-          {/* MENÚ DE NAVEGACIÓN */}
-          <div className="menu-section card">
-            <h2 className="section-title">MENU</h2>
-            <nav className="dashboard-nav">
-              <button className="nav-btn">🏫 ESCUELAS</button>
-              <button className="nav-btn">📋 LICENCIAS</button>
-            </nav>
+          <div className="card border-danger">
+            <h3 className="section-title text-danger">🚨 ALERTAS DEL SISTEMA ({alertasCriticas.length})</h3>
+            <div className="alert-list-scroll">
+              {alertasCriticas.map(a => (
+                <div key={a.id} className="alert-item-mini border-bottom p-8">
+                  <span className="text-danger font-bold">● {a.escuela}</span>
+                  <div className="text-muted small">{a.tipo}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* COLUMNA CENTRAL: Gráficos y Estadísticas */}
-        <div className="dashboard-center">
-          {/* BOTONES DE ESTADÍSTICAS RÁPIDAS */}
+        {/* COLUMNA CENTRAL: Estadísticas y Gráficos */}
+        <div className="dashboard-col">
           <div className="stats-buttons-grid mb-20">
-            <div className="stat-button primary">
-              <span className="stat-number">{stats.totalEscuelas}</span>
-              <span className="stat-label">ESCUELAS</span>
+            <div className="stat-btn bg-primary">
+              <div className="num">{stats.total}</div>
+              <div className="lab">ESCUELAS</div>
             </div>
-            <div className="stat-button success">
-              <span className="stat-number">{stats.acdmActivos}</span>
-              <span className="stat-label">ACDM ACTIVOS</span>
+            <div className="stat-btn bg-success">
+              <div className="num">{stats.activos}</div>
+              <div className="lab">ACTIVOS</div>
             </div>
-            <div className="stat-button warning">
-              <span className="stat-number">{stats.enLicencia}</span>
-              <span className="stat-label">EN LICENCIA</span>
+            <div className="stat-btn bg-warning">
+              <div className="num">{stats.licencia}</div>
+              <div className="lab">LICENCIAS</div>
             </div>
-            <div className="stat-button accent">
-              <span className="stat-number">{stats.intervenciones}</span>
-              <span className="stat-label">INTERVENCIONES</span>
-            </div>
-            <div className="stat-button danger">
-              <span className="stat-number">{stats.sinACDM}</span>
-              <span className="stat-label">SIN ACDM</span>
+            <div className="stat-btn bg-danger">
+              <div className="num">{stats.sinACDM}</div>
+              <div className="lab">SIN ACDM</div>
             </div>
           </div>
 
-          {/* GRÁFICOS DE TORTA - Aquí van los que mencionaste */}
-          <div className="charts-row mb-20">
-            <div className="chart-container card">
-              <h3 className="chart-title">Distribución ACDM</h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={distribucionACDM}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {distribucionACDM.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="chart-container card">
-              <h3 className="chart-title">Estado General</h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={estadoGeneral}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    <Cell fill="#2563eb" />
-                    <Cell fill="#7c3aed" />
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+          <div className="chart-box card">
+            <h3 className="section-title">DISTRIBUCIÓN DE PERSONAL</h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie data={dataPie} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                  {dataPie.map((entry, index) => <Cell key={index} fill={entry.color} />)}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
+        </div>
 
-          {/* CONTROL DE LICENCIAS */}
-          <div className="licencias-section card">
-            <h2 className="section-title">CONTROL DE LICENCIAS</h2>
-            {escuelas.slice(0, 3).map(escuela => (
-              <div key={escuela.id} className="licencia-item">
-                <span className="docente-nombre">
-                  {escuela.docentes?.find(d => d.estado === "Licencia")?.nombreApellido || 'Sin licencias'}
-                </span>
-                <span className="escuela-nombre">{escuela.escuela}</span>
+        {/* COLUMNA DERECHA: Licencias Críticas */}
+        <div className="dashboard-col">
+          <div className="card border-accent h-full">
+            <h3 className="section-title">🏥 SEGUIMIENTO CRÍTICO</h3>
+            {licenciasVencidas.map((l, i) => (
+              <div key={i} className="licencia-vencida-box mb-12 p-12 bg-light rounded shadow-sm">
+                <strong className="text-danger">⚠️ LICENCIA VENCIDA</strong>
+                <p className="mb-4"><strong>{l.nombreApellido}</strong></p>
+                <div className="small text-muted">{l.escuelaNombre}</div>
+                <DaysRemaining fechaFin={l.fechaFinLicencia} />
               </div>
             ))}
           </div>
         </div>
 
-        {/* COLUMNA DERECHA: Alertas */}
-        <div className="dashboard-right">
-          <div className="alertas-section card">
-            <h2 className="section-title alert-title">
-              ALERTAS CRÍTICAS
-              <span className="alert-count">{alertasCriticas.length}</span>
-            </h2>
-            
-            <div className="alertas-list">
-              {alertasCriticas.map((alerta, idx) => (
-                <div key={idx} className="alerta-item">
-                  <span className="alerta-icon">⚠️</span>
-                  <div className="alerta-content">
-                    <span className="alerta-escuela">{alerta.escuela}</span>
-                    <span className="alerta-problema">{alerta.problema}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Link de licencia vencida (como en tu imagen) */}
-            <div className="licencia-vencida-link">
-              <a href="#" className="link-danger">
-                Licencia Vencida
-              </a>
-              <p className="vencida-detalle">
-                López, María Elena — Escuela N°1 Julio Argentino Roca (Expiró)
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
