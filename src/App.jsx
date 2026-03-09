@@ -41,6 +41,12 @@ export default function App() {
     init();
   }, []);
 
+  // Monitoreo de búsqueda y estado
+  useEffect(() => {
+    console.log('🔍 Término de búsqueda:', search);
+    console.log('📊 Total escuelas:', escuelas.length);
+  }, [search, escuelas]);
+
   // Colapsar sidebar automáticamente en dispositivos pequeños
   useEffect(() => {
     if (deviceType === 'mobile' || deviceType === 'tablet') {
@@ -50,53 +56,49 @@ export default function App() {
     }
   }, [deviceType]);
 
-  // 2. Filtro inteligente mejorado
-  const filteredEscuelas = useMemo(() => {
-    try {
-      if (!search || search.trim() === '') return escuelas;
-      const term = search.toLowerCase().trim();
-      if (term.length < 2) return escuelas;
-
-      return escuelas.filter(e => {
-        if (!e) return false;
-        const nombre = (e.escuela || '').toLowerCase();
-        const distrito = (e.de?.toString() || '');
-        const direccion = (e.direccion || '').toLowerCase();
-        const nivel = (e.nivel || '').toLowerCase();
-        return nombre.includes(term) || distrito.includes(term) || direccion.includes(term) || nivel.includes(term);
-      });
-    } catch (error) {
-      console.error('Error en filtro:', error);
-      return escuelas;
-    }
-  }, [escuelas, search]);
-
-  // 3. Handlers de datos
-  const handleEditSchool = (escuela) => setEscuelaModal({ show: true, isNew: false, data: escuela });
+  // 2. Lógica para EDITAR Y ELIMINAR ESCUELAS
+  const handleEditSchool = (escuela) => {
+    setEscuelaModal({ show: true, isNew: false, data: escuela });
+  };
 
   const handleDeleteSchool = async (escuelaId) => {
-    if (!window.confirm("¿Eliminar esta escuela?")) return;
-    const nuevas = escuelas.filter(e => e.id !== escuelaId);
-    setEscuelas(nuevas);
-    await saveEscuelas(nuevas);
+    try {
+      const nuevasEscuelas = escuelas.filter(e => e.id !== escuelaId);
+      setEscuelas(nuevasEscuelas);
+      await saveEscuelas(nuevasEscuelas);
+    } catch (error) {
+      alert('Error al eliminar la escuela');
+    }
   };
 
-  const handleUpdateEscuela = async (updated) => {
-    setEscuelas(prev => {
-      const nuevas = prev.map(e => e.id === updated.id ? updated : e);
-      saveEscuelas(nuevas);
-      return nuevas;
-    });
+  // 3. Lógica para ACTUALIZACIÓN GENERAL (Seguimiento, Visitas, etc.)
+  const handleUpdateEscuela = async (escuelaActualizada) => {
+    try {
+      setEscuelas(prevEscuelas => {
+        const nuevas = prevEscuelas.map(e => 
+          e.id === escuelaActualizada.id ? escuelaActualizada : e
+        );
+        saveEscuelas(nuevas); 
+        return nuevas;
+      });
+      console.log('✅ Cambio guardado:', escuelaActualizada.escuela);
+    } catch (error) {
+      console.error('Error al actualizar:', error);
+    }
   };
 
+  // 4. Lógica para AGREGAR DOCENTE
   const handleDocenteAdded = async (escuelaId, nuevoDocente) => {
-    const updated = escuelas.map(esc => 
-      esc.id === escuelaId ? { ...esc, docentes: [...(esc.docentes || []), nuevoDocente] } : esc
+    const updatedEscuelas = escuelas.map(esc => 
+      esc.id === escuelaId 
+        ? { ...esc, docentes: [...(esc.docentes || []), nuevoDocente] }
+        : esc
     );
-    setEscuelas(updated);
-    await saveEscuelas(updated);
+    setEscuelas(updatedEscuelas);
+    await saveEscuelas(updatedEscuelas);
   };
 
+  // 5. Guardar/Actualizar Escuela desde Modal
   const handleSaveSchool = async (schoolData) => {
     let updated;
     if (escuelaModal.isNew) {
@@ -109,34 +111,46 @@ export default function App() {
     setEscuelaModal({ show: false, isNew: true, data: null });
   };
 
-  const exportToCSV = () => {
-    const headers = ['DE', 'Escuela', 'Nivel', 'Dirección'];
-    const rows = escuelas.map(esc => [esc.de, esc.escuela, esc.nivel, esc.direccion]);
-    const csvContent = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `reporte_acdm_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    setShowExportSuccess(true);
-    setTimeout(() => setShowExportSuccess(false), 3000);
-  };
+  // 6. Filtros y Contadores (Memoizados para performance)
+  const filteredEscuelas = useMemo(() => {
+    const term = search.toLowerCase().trim();
+    if (!term) return escuelas;
+    return escuelas.filter(e => 
+      e.escuela?.toLowerCase().includes(term) ||
+      e.de?.toString().includes(term) ||
+      e.direccion?.toLowerCase().includes(term)
+    );
+  }, [escuelas, search]);
 
   const licenciasActivas = useMemo(() => {
     return escuelas.flatMap(e => e.docentes || []).filter(d => d.estado === "Licencia").length;
   }, [escuelas]);
 
-  // Backdoor Admin
+  // 7. Exportación a CSV
+  const exportToCSV = () => {
+    const headers = ['Distrito', 'Escuela', 'Nivel', 'Dirección', 'Mail ACDM'];
+    const rows = escuelas.map(esc => [esc.de, esc.escuela, esc.nivel, esc.direccion, esc.acdmMail]);
+    const csvContent = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `reporte_acdm_${new Date().toISOString().split('T')[0]}.csv`);
+    link.click();
+    setShowExportSuccess(true);
+    setTimeout(() => setShowExportSuccess(false), 3000);
+  };
+
+  // Atajo administrador (Ctrl+Alt+A)
   useEffect(() => {
     const handler = (e) => {
-      if (e.ctrlKey && e.altKey && e.key === "a") setUser({ username: "admin_root", rol: "admin" });
+      if (e.ctrlKey && e.altKey && e.key === "a") setUser({ username: "admin_papiweb", rol: "admin" });
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  if (loading) return <div className="loader-container"><div className="loader"></div><p>Sync Cloud Pro...</p></div>;
+  if (loading) return <div className="loader-container"><div className="loader"></div><p>Sync Cloud...</p></div>;
   if (!user) return <Login onLogin={setUser} />;
 
   return (
@@ -149,6 +163,7 @@ export default function App() {
             <span className="brand-sub">CLOUD PRO</span>
           </div>
         </div>
+        
         <div className="header-center">
           <div className="search-bar">
             <span className="search-icon">🔍</span>
@@ -156,16 +171,18 @@ export default function App() {
               className="search-input" 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
-              placeholder="Buscar institución..." 
+              placeholder="Buscar escuela, distrito..." 
             />
           </div>
         </div>
+
         <div className="header-right">
           <ThemeToggle />
-          <button className="btn-export" onClick={exportToCSV}>📥</button>
-          <button className="btn-add" onClick={() => setEscuelaModal({ show: true, isNew: true, data: null })}>➕</button>
-          <button className="btn-logout" onClick={() => setUser(null)}>🔌</button>
+          <button className="btn-export" onClick={exportToCSV} title="Exportar CSV">📥</button>
+          <button className="btn-add" onClick={() => setEscuelaModal({ show: true, isNew: true, data: null })} title="Nueva Escuela">➕</button>
+          <button className="btn-logout" onClick={() => setUser(null)} title="Salir">🔌</button>
         </div>
+        {showExportSuccess && <div className="toast-success">Archivo generado con éxito ✅</div>}
       </header>
 
       <div className="layout-body">
@@ -176,25 +193,15 @@ export default function App() {
           <button className={`nav-link ${view === 'calendario' ? 'active' : ''}`} onClick={() => setView('calendario')}>
             📅 Licencias {licenciasActivas > 0 && <span className="nav-badge">{licenciasActivas}</span>}
           </button>
+          <div className="sidebar-footer">v2.4 Pro</div>
         </aside>
 
         <main className="content-area">
-          {view === "dashboard" && <Dashboard escuelas={escuelas} />}
+          {view === "dashboard" && <div className="fade-in"><Dashboard escuelas={escuelas} /></div>}
           
           {view === "escuelas" && (
             <div className="fade-in">
-              <h2 className="mb-16 title-rajdhani">
-                INSTITUCIONES ({filteredEscuelas.length})
-                {search && <span className="search-term"> · "{search}"</span>}
-              </h2>
-              
-              {filteredEscuelas.length === 0 && search && (
-                <div className="no-results card p-20 text-center">
-                  <p>🔍 No hay coincidencias para "{search}"</p>
-                  <button className="btn btn-secondary btn-sm mt-12" onClick={() => setSearch('')}>Limpiar</button>
-                </div>
-              )}
-              
+              <h2 className="mb-16 title-rajdhani">INSTITUCIONES ({filteredEscuelas.length})</h2>
               <div className="school-grid">
                 {filteredEscuelas.map(esc => (
                   <SchoolCard 
@@ -208,10 +215,15 @@ export default function App() {
                   />
                 ))}
               </div>
+              {filteredEscuelas.length === 0 && (
+                <div className="text-center p-40 opacity-50">
+                  <p>No se encontraron escuelas que coincidan con "{search}"</p>
+                </div>
+              )}
             </div>
           )}
 
-          {view === "calendario" && <CalendarView escuelas={escuelas} />}
+          {view === "calendario" && <div className="fade-in"><CalendarView escuelas={escuelas} /></div>}
         </main>
       </div>
 
