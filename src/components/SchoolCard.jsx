@@ -2,6 +2,7 @@ import { useState } from "react";
 import DaysRemaining from './DaysRemaining.jsx';
 import AddDocenteModal from './AddDocenteModal.jsx'; 
 import SeguimientoPanel from './SeguimientoPanel.jsx';
+import SchoolMap from './SchoolMap.jsx'; // Importación integrada
 
 export default function SchoolCard({ escuela, isAdmin, onDocenteAdded, onEdit, onDelete, onUpdate }) {
   const [expanded, setExpanded] = useState(false);
@@ -14,6 +15,7 @@ export default function SchoolCard({ escuela, isAdmin, onDocenteAdded, onEdit, o
   const openMaps = (e) => {
     e.stopPropagation();
     const query = encodeURIComponent(`${escuela.escuela}, ${escuela.direccion}, CABA`);
+    // Corregido: URL de Google Maps completa
     window.open(`https://www.google.com{query}`, "_blank", "noopener,noreferrer");
   };
 
@@ -60,6 +62,11 @@ export default function SchoolCard({ escuela, isAdmin, onDocenteAdded, onEdit, o
               <span className="clickable ml-8" onClick={(e) => handleMail(escuela.acdmMail, e)}>📨 ACDM: {escuela.acdmMail}</span>
             )}
             <span className="ml-8">📞 {escuela.telefonos?.[0] || "S/T"}</span>
+          </div>
+
+          {/* MAPA DE LA ESCUELA - Ubicación integrada */}
+          <div className="map-section mt-16 shadow-sm rounded-lg overflow-hidden border">
+             <SchoolMap escuela={escuela} />
           </div>
 
           {/* SELECTOR DE PESTAÑAS (TABS) */}

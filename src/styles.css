@@ -2637,3 +2637,63 @@ body {
   gap: 20px;
   animation: fadeIn 0.4s ease-out;
 }
+/* Estilos para SchoolMap */
+.school-map-container {
+  margin: 1rem 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.map-loading {
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  border-radius: 8px;
+}
+
+.map-error {
+  height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  border-radius: 8px;
+  gap: 1rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.map-fallback-link {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background: var(--primary);
+  color: white;
+  text-decoration: none;
+  border-radius: var(--border-radius-md);
+  margin-top: 0.5rem;
+  transition: var(--transition);
+}
+
+.map-fallback-link:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+}
+
+/* Estilo para el link de dirección */
+.direccion-link {
+  color: var(--primary);
+  text-decoration: none;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.direccion-link:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+}
