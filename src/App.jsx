@@ -11,6 +11,7 @@ import SchoolCard from './components/SchoolCard.jsx';
 import AddSchoolModal from './components/AddSchoolModal.jsx';
 import CalendarView from './components/CalendarView.jsx';
 import ThemeToggle from './components/ThemeToggle.jsx';
+import EmailExporter from './components/EmailExporter.jsx'; // Importación confirmada
 
 export default function App() {
   const { deviceType } = useTheme(); 
@@ -25,7 +26,7 @@ export default function App() {
   // Estados para modales
   const [escuelaModal, setEscuelaModal] = useState({ show: false, isNew: true, data: null });
 
-  // 1. Carga inicial y lógica de Responsividad
+  // 1. Carga inicial sincronizada
   useEffect(() => {
     async function init() {
       try {
@@ -41,13 +42,7 @@ export default function App() {
     init();
   }, []);
 
-  // Monitoreo de búsqueda y estado
-  useEffect(() => {
-    console.log('🔍 Término de búsqueda:', search);
-    console.log('📊 Total escuelas:', escuelas.length);
-  }, [search, escuelas]);
-
-  // Colapsar sidebar automáticamente en dispositivos pequeños
+  // Responsividad automática
   useEffect(() => {
     if (deviceType === 'mobile' || deviceType === 'tablet') {
       setSidebarCollapsed(true);
@@ -56,49 +51,40 @@ export default function App() {
     }
   }, [deviceType]);
 
-  // 2. Lógica para EDITAR Y ELIMINAR ESCUELAS
+  // 2. Handlers de Escuelas
   const handleEditSchool = (escuela) => {
     setEscuelaModal({ show: true, isNew: false, data: escuela });
   };
 
   const handleDeleteSchool = async (escuelaId) => {
+    if (!window.confirm("¿Eliminar esta institución?")) return;
     try {
       const nuevasEscuelas = escuelas.filter(e => e.id !== escuelaId);
       setEscuelas(nuevasEscuelas);
       await saveEscuelas(nuevasEscuelas);
     } catch (error) {
-      alert('Error al eliminar la escuela');
+      alert('Error al eliminar');
     }
   };
 
-  // 3. Lógica para ACTUALIZACIÓN GENERAL (Seguimiento, Visitas, etc.)
   const handleUpdateEscuela = async (escuelaActualizada) => {
-    try {
-      setEscuelas(prevEscuelas => {
-        const nuevas = prevEscuelas.map(e => 
-          e.id === escuelaActualizada.id ? escuelaActualizada : e
-        );
-        saveEscuelas(nuevas); 
-        return nuevas;
-      });
-      console.log('✅ Cambio guardado:', escuelaActualizada.escuela);
-    } catch (error) {
-      console.error('Error al actualizar:', error);
-    }
+    setEscuelas(prev => {
+      const nuevas = prev.map(e => e.id === escuelaActualizada.id ? escuelaActualizada : e);
+      saveEscuelas(nuevas); 
+      return nuevas;
+    });
   };
 
-  // 4. Lógica para AGREGAR DOCENTE
   const handleDocenteAdded = async (escuelaId, nuevoDocente) => {
-    const updatedEscuelas = escuelas.map(esc => 
+    const updated = escuelas.map(esc => 
       esc.id === escuelaId 
         ? { ...esc, docentes: [...(esc.docentes || []), nuevoDocente] }
         : esc
     );
-    setEscuelas(updatedEscuelas);
-    await saveEscuelas(updatedEscuelas);
+    setEscuelas(updated);
+    await saveEscuelas(updated);
   };
 
-  // 5. Guardar/Actualizar Escuela desde Modal
   const handleSaveSchool = async (schoolData) => {
     let updated;
     if (escuelaModal.isNew) {
@@ -111,14 +97,14 @@ export default function App() {
     setEscuelaModal({ show: false, isNew: true, data: null });
   };
 
-  // 6. Filtros y Contadores (Memoizados para performance)
+  // 3. Filtros y Reportes
   const filteredEscuelas = useMemo(() => {
     const term = search.toLowerCase().trim();
     if (!term) return escuelas;
     return escuelas.filter(e => 
-      e.escuela?.toLowerCase().includes(term) ||
-      e.de?.toString().includes(term) ||
-      e.direccion?.toLowerCase().includes(term)
+      (e.escuela || '').toLowerCase().includes(term) ||
+      (e.de || '').toString().includes(term) ||
+      (e.direccion || '').toLowerCase().includes(term)
     );
   }, [escuelas, search]);
 
@@ -126,7 +112,6 @@ export default function App() {
     return escuelas.flatMap(e => e.docentes || []).filter(d => d.estado === "Licencia").length;
   }, [escuelas]);
 
-  // 7. Exportación a CSV
   const exportToCSV = () => {
     const headers = ['Distrito', 'Escuela', 'Nivel', 'Dirección', 'Mail ACDM'];
     const rows = escuelas.map(esc => [esc.de, esc.escuela, esc.nivel, esc.direccion, esc.acdmMail]);
@@ -135,13 +120,13 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `reporte_acdm_${new Date().toISOString().split('T')[0]}.csv`);
+    link.download = `reporte_acdm_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     setShowExportSuccess(true);
     setTimeout(() => setShowExportSuccess(false), 3000);
   };
 
-  // Atajo administrador (Ctrl+Alt+A)
+  // Login Bypass Admin (Ctrl+Alt+A)
   useEffect(() => {
     const handler = (e) => {
       if (e.ctrlKey && e.altKey && e.key === "a") setUser({ username: "admin_papiweb", rol: "admin" });
@@ -150,7 +135,7 @@ export default function App() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  if (loading) return <div className="loader-container"><div className="loader"></div><p>Sync Cloud...</p></div>;
+  if (loading) return <div className="loader-container"><div className="loader"></div><p>Cargando Sistema...</p></div>;
   if (!user) return <Login onLogin={setUser} />;
 
   return (
@@ -171,18 +156,19 @@ export default function App() {
               className="search-input" 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
-              placeholder="Buscar escuela, distrito..." 
+              placeholder="Buscar escuela o distrito..." 
             />
           </div>
         </div>
 
         <div className="header-right">
           <ThemeToggle />
+          <EmailExporter escuelas={escuelas} />
           <button className="btn-export" onClick={exportToCSV} title="Exportar CSV">📥</button>
           <button className="btn-add" onClick={() => setEscuelaModal({ show: true, isNew: true, data: null })} title="Nueva Escuela">➕</button>
           <button className="btn-logout" onClick={() => setUser(null)} title="Salir">🔌</button>
         </div>
-        {showExportSuccess && <div className="toast-success">Archivo generado con éxito ✅</div>}
+        {showExportSuccess && <div className="toast-success">CSV generado ✅</div>}
       </header>
 
       <div className="layout-body">
@@ -215,11 +201,6 @@ export default function App() {
                   />
                 ))}
               </div>
-              {filteredEscuelas.length === 0 && (
-                <div className="text-center p-40 opacity-50">
-                  <p>No se encontraron escuelas que coincidan con "{search}"</p>
-                </div>
-              )}
             </div>
           )}
 
