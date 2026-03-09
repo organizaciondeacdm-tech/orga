@@ -1,6 +1,7 @@
 // Papiweb desarrollos informáticos - Versión Pro Cloud 2024
 import { useState, useEffect, useMemo } from "react";
 import { getEscuelas, saveEscuelas, initializeKV } from './services/kvStorage.client.js';
+import { useTheme } from './context/ThemeContext.jsx'; // Importamos el contexto
 import "./styles.css"; 
 
 // Componentes
@@ -9,8 +10,10 @@ import Dashboard from './components/Dashboard.jsx';
 import SchoolCard from './components/SchoolCard.jsx';
 import AddSchoolModal from './components/AddSchoolModal.jsx';
 import CalendarView from './components/CalendarView.jsx';
+import ThemeToggle from './components/ThemeToggle.jsx'; // Importamos el Toggle
 
 export default function App() {
+  const { deviceType } = useTheme(); // Consumimos el tipo de dispositivo
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [user, setUser] = useState(null);
   const [escuelas, setEscuelas] = useState([]);
@@ -22,7 +25,7 @@ export default function App() {
   // Estados para modales
   const [escuelaModal, setEscuelaModal] = useState({ show: false, isNew: true, data: null });
 
-  // 1. Carga inicial sincronizada
+  // 1. Carga inicial y lógica de Responsividad
   useEffect(() => {
     async function init() {
       try {
@@ -38,13 +41,18 @@ export default function App() {
     init();
   }, []);
 
+  // Colapsar sidebar automáticamente en móviles
+  useEffect(() => {
+    if (deviceType === 'mobile' || deviceType === 'tablet') {
+      setSidebarCollapsed(true);
+    } else {
+      setSidebarCollapsed(false);
+    }
+  }, [deviceType]);
+
   // 2. Lógica para EDITAR Y ELIMINAR ESCUELAS
   const handleEditSchool = (escuela) => {
-    setEscuelaModal({ 
-      show: true,
-      isNew: false, 
-      data: escuela 
-    });
+    setEscuelaModal({ show: true, isNew: false, data: escuela });
   };
 
   const handleDeleteSchool = async (escuelaId) => {
@@ -53,26 +61,23 @@ export default function App() {
       setEscuelas(nuevasEscuelas);
       await saveEscuelas(nuevasEscuelas);
     } catch (error) {
-      alert('Error al eliminar la escuela de la nube');
+      alert('Error al eliminar la escuela');
     }
   };
 
   // 3. Lógica para ACTUALIZACIÓN GENERAL (Seguimiento, etc.)
   const handleUpdateEscuela = async (escuelaActualizada) => {
     try {
-      // Actualizamos el estado local usando la función de retorno para asegurar consistencia
       setEscuelas(prevEscuelas => {
         const nuevas = prevEscuelas.map(e => 
           e.id === escuelaActualizada.id ? escuelaActualizada : e
         );
-        // Guardamos en la nube la lista actualizada
         saveEscuelas(nuevas); 
         return nuevas;
       });
       console.log('✅ Cambio guardado:', escuelaActualizada.escuela);
     } catch (error) {
       console.error('Error al actualizar:', error);
-      alert('No se pudieron guardar los cambios en la nube');
     }
   };
 
@@ -93,19 +98,14 @@ export default function App() {
     if (escuelaModal.isNew) {
       updated = [...escuelas, { ...schoolData, id: `e${Date.now()}`, docentes: [], alumnos: [] }];
     } else {
-      updated = escuelas.map(e => 
-        e.id === schoolData.id 
-          ? { ...e, ...schoolData } 
-          : e
-      );
+      updated = escuelas.map(e => e.id === schoolData.id ? { ...e, ...schoolData } : e);
     }
-    
     setEscuelas(updated);
     await saveEscuelas(updated);
     setEscuelaModal({ show: false, isNew: true, data: null });
   };
 
-  // 6. Filtro inteligente y Contadores
+  // 6. Filtros y Contadores
   const filteredEscuelas = useMemo(() => {
     const term = search.toLowerCase();
     return escuelas.filter(e => 
@@ -117,8 +117,7 @@ export default function App() {
   }, [escuelas, search]);
 
   const licenciasActivas = useMemo(() => {
-    return escuelas.flatMap(e => e.docentes || [])
-      .filter(d => d.estado === "Licencia").length;
+    return escuelas.flatMap(e => e.docentes || []).filter(d => d.estado === "Licencia").length;
   }, [escuelas]);
 
   // 7. Exportación a CSV
@@ -136,20 +135,11 @@ export default function App() {
     setTimeout(() => setShowExportSuccess(false), 3000);
   };
 
-  // Atajo administrador (Ctrl+Alt+A)
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.ctrlKey && e.altKey && e.key === "a") setUser({ username: "admin_papiweb", rol: "admin" });
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
-
   if (loading) return <div className="loader-container"><div className="loader"></div><p>Sync Cloud...</p></div>;
   if (!user) return <Login onLogin={setUser} />;
 
   return (
-    <div className={`app-container ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+    <div className={`app-container ${sidebarCollapsed ? "sidebar-collapsed" : ""} device-${deviceType}`}>
       <header className="header">
         <div className="header-left">
           <button className="btn-icon" onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>☰</button>
@@ -172,6 +162,7 @@ export default function App() {
         </div>
 
         <div className="header-right">
+          <ThemeToggle /> {/* Toggle de Modo Oscuro integrado */}
           <button className="btn-export" onClick={exportToCSV} title="Exportar CSV">📥</button>
           <button className="btn-add" onClick={() => setEscuelaModal({ show: true, isNew: true, data: null })} title="Nueva Escuela">➕</button>
           <button className="btn-logout" onClick={() => setUser(null)} title="Salir">🔌</button>
@@ -205,7 +196,7 @@ export default function App() {
                     onDocenteAdded={handleDocenteAdded}
                     onEdit={handleEditSchool}
                     onDelete={handleDeleteSchool}
-                    onUpdate={handleUpdateEscuela} // <--- INTEGRADO AQUÍ
+                    onUpdate={handleUpdateEscuela}
                   />
                 ))}
               </div>

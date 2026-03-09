@@ -2082,3 +2082,393 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* ===== VARIABLES GLOBALES ===== */
+:root {
+  --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  --border-radius-sm: 6px;
+  --border-radius-md: 10px;
+  --border-radius-lg: 16px;
+  --transition: all 0.3s ease;
+  
+  /* Breakpoints */
+  --mobile: 768px;
+  --tablet: 1024px;
+}
+
+/* ===== TEMA CLARO (default) ===== */
+:root,
+[data-theme="light"] {
+  --bg-primary: #f5f7fa;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f0f2f5;
+  --bg-hover: #e9ecef;
+  
+  --text-primary: #1a1b1e;
+  --text-secondary: #4a4b4e;
+  --text-muted: #6c757d;
+  --text-inverse: #ffffff;
+  
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --primary-light: #3b82f6;
+  --primary-alpha: rgba(37, 99, 235, 0.1);
+  
+  --accent: #7c3aed;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  
+  --border-color: #e2e8f0;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+  
+  --card-bg: #ffffff;
+  --header-bg: linear-gradient(135deg, #2563eb, #1d4ed8);
+  --sidebar-bg: #ffffff;
+}
+
+/* ===== TEMA OSCURO ===== */
+[data-theme="dark"] {
+  --bg-primary: #0a0c10;
+  --bg-secondary: #1a1e24;
+  --bg-tertiary: #2d323b;
+  --bg-hover: #3a404b;
+  
+  --text-primary: #f0f2f5;
+  --text-secondary: #cbd5e0;
+  --text-muted: #94a3b8;
+  --text-inverse: #1a1e24;
+  
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
+  --primary-light: #60a5fa;
+  --primary-alpha: rgba(59, 130, 246, 0.2);
+  
+  --accent: #8b5cf6;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  
+  --border-color: #2d3748;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.3);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.3);
+  
+  --card-bg: #1a1e24;
+  --header-bg: linear-gradient(135deg, #1e293b, #0f172a);
+  --sidebar-bg: #1a1e24;
+}
+
+/* ===== ESTILOS BASE ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+body {
+  font-family: var(--font-primary);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ===== LAYOUT RESPONSIVE ===== */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg-primary);
+}
+
+/* Header Responsive */
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(0.5rem, 2vw, 1rem);
+  background: var(--header-bg);
+  color: white;
+  gap: 1rem;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1 1 auto;
+}
+
+.header-center {
+  flex: 2 1 300px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+
+/* Search Bar Responsive */
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.2);
+  border-radius: var(--border-radius-lg);
+  padding: 0.25rem 0.5rem;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.75rem;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: clamp(0.875rem, 2vw, 1rem);
+}
+
+.search-input::placeholder {
+  color: rgba(255,255,255,0.7);
+}
+
+/* Layout Body Responsive */
+.layout-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+/* Sidebar Responsive */
+.sidebar {
+  width: 250px;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border-color);
+  transition: all 0.3s;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.sidebar-collapsed .sidebar {
+  width: 60px;
+}
+
+.sidebar-collapsed .nav-link span:not(.nav-badge) {
+  display: none;
+}
+
+/* Content Area Responsive */
+.content-area {
+  flex: 1;
+  padding: clamp(1rem, 3vw, 2rem);
+  overflow-y: auto;
+  background: var(--bg-primary);
+}
+
+/* School Grid Responsive */
+.school-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr));
+  gap: clamp(1rem, 2vw, 1.5rem);
+  margin-top: 1rem;
+}
+
+/* School Card Responsive */
+.school-card {
+  background: var(--card-bg);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+
+.school-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.school-card-header {
+  padding: 1rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.school-card-body {
+  padding: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Timeline Responsive */
+.timeline-item {
+  padding: 1rem;
+  background: var(--bg-tertiary);
+  border-radius: var(--border-radius-md);
+  margin-bottom: 0.5rem;
+}
+
+/* Modal Responsive */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 1000;
+}
+
+.modal {
+  background: var(--bg-secondary);
+  border-radius: var(--border-radius-lg);
+  padding: clamp(1rem, 4vw, 2rem);
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  border-radius: var(--border-radius-lg);
+  padding: 0.5rem;
+  cursor: pointer;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.theme-toggle:hover {
+  background: rgba(255,255,255,0.3);
+  transform: scale(1.05);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .layout-body {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+    height: auto;
+    max-height: 60px;
+    overflow: hidden;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .sidebar.expanded {
+    max-height: 500px;
+  }
+  
+  .sidebar-collapsed .sidebar {
+    width: 100%;
+  }
+  
+  .school-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .header-right {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .modal {
+    margin: 1rem;
+    max-height: calc(100vh - 2rem);
+  }
+  
+  .tab-nav {
+    flex-wrap: wrap;
+  }
+  
+  .tab-btn {
+    flex: 1 1 auto;
+    min-width: 120px;
+  }
+}
+
+/* Tablet Responsive */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .school-grid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+  
+  .sidebar {
+    width: 200px;
+  }
+}
+
+/* Utilidades Responsive */
+.hide-mobile {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: none;
+  }
+}
+
+.show-mobile {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .show-mobile {
+    display: block;
+  }
+}
+.theme-toggle {
+  background: var(--bg-card); /* Usa la variable del contexto */
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.theme-toggle:hover {
+  transform: scale(1.1) rotate(15deg);
+  border-color: var(--accent);
+  background: var(--bg-primary);
+}
+
+/* Efecto sutil cuando cambia el tema */
+[data-theme='dark'] .theme-toggle {
+  background: #1e293b;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+}
