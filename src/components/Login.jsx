@@ -1,16 +1,13 @@
 import { useState } from 'react';
-import { useTheme } from '../context/ThemeContext';
 
 export default function Login({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { theme } = useTheme();
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (username && password) {
-      // Simulación de login - Ajustar a tu lógica real
       onLogin({ username, rol: username === 'admin' ? 'admin' : 'user' });
     } else {
       setError('Credenciales requeridas');
@@ -19,49 +16,47 @@ export default function Login({ onLogin }) {
 
   return (
     <div className="login-page">
-      <div className="login-bg-decoration"></div>
+      {/* VIDEO LOCAL: Apunta a /papiweb.mp4 porque está en la carpeta public */}
+      <video autoPlay muted loop playsInline className="login-video-bg">
+        <source src="/papiweb.mp4" type="video/mp4" />
+      </video>
+      
+      <div className="login-overlay"></div>
+
       <div className="login-card fade-in">
         <div className="login-header">
-          <div className="login-icon">⚡</div>
+          <div className="login-badge">SISTEMA SEGURO</div>
           <h1 className="title-rajdhani">PAPIWEB <span className="text-accent">ACDM</span></h1>
-          <p className="subtitle">GESTIÓN PROFESIONAL CLOUD</p>
+          <p className="subtitle">GESTIÓN DE INSTITUCIONES 2.4</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
-          <div className="input-group">
-            <label>USUARIO</label>
-            <input
-              type="text"
-              className="login-input"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Ej: admin_papiweb"
-              autoFocus
-            />
-          </div>
+          <input
+            type="text"
+            className="login-input"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="USUARIO"
+            autoFocus
+          />
+          <input
+            type="password"
+            className="login-input"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="CONTRASEÑA"
+          />
           
-          <div className="input-group">
-            <label>CONTRASEÑA</label>
-            <input
-              type="password"
-              className="login-input"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-            />
-          </div>
-          
-          {error && <div className="login-error-msg">⚠️ {error}</div>}
+          {error && <div className="login-error-msg">❌ {error}</div>}
           
           <button type="submit" className="login-submit-btn title-rajdhani">
-            ESTABLECER CONEXIÓN
+            INICIAR CONEXIÓN
           </button>
         </form>
 
         <div className="login-footer">
-          <span>v2.4 PRO EDITION</span>
-          <span className="dot">•</span>
-          <span>SISTEMA EN LÍNEA</span>
+          <span className="pulse-dot"></span>
+          <span>SERVIDOR: PDX1-USA (ONLINE)</span>
         </div>
       </div>
     </div>
