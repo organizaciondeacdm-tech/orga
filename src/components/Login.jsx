@@ -1,4 +1,3 @@
-// src/components/Login.jsx (versión mejorada)
 import { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -6,75 +5,63 @@ export default function Login({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [contrast, setContrast] = useState('normal'); // 'normal' | 'high'
-  
   const { theme } = useTheme();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
-    // Validación simple (ajustá según tu lógica)
     if (username && password) {
-      onLogin({ username, rol: 'user' });
+      // Simulación de login - Ajustar a tu lógica real
+      onLogin({ username, rol: username === 'admin' ? 'admin' : 'user' });
     } else {
-      setError('Ingresá usuario y contraseña');
+      setError('Credenciales requeridas');
     }
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card">
-        {/* Logo o ícono opcional */}
-        <div className="login-logo mb-20">
-          <span className="logo-icon">🏫</span>
+    <div className="login-page">
+      <div className="login-bg-decoration"></div>
+      <div className="login-card fade-in">
+        <div className="login-header">
+          <div className="login-icon">⚡</div>
+          <h1 className="title-rajdhani">PAPIWEB <span className="text-accent">ACDM</span></h1>
+          <p className="subtitle">GESTIÓN PROFESIONAL CLOUD</p>
         </div>
 
-        {/* Títulos con buen contraste */}
-        <h1>PAPIWEB</h1>
-        <h2 className={contrast === 'high' ? 'high-contrast' : ''}>
-          SISTEMA ACDM
-        </h2>
-        
-        {/* Control de contraste (opcional) */}
-        <button 
-          className="contrast-toggle"
-          onClick={() => setContrast(prev => prev === 'normal' ? 'high' : 'normal')}
-          title="Alternar contraste"
-        >
-          {contrast === 'normal' ? '🔆' : '⚡'}
-        </button>
-
-        {/* Formulario */}
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            className="login-input"
-            placeholder="Usuario"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoFocus
-          />
+        <form onSubmit={handleSubmit} className="login-form">
+          <div className="input-group">
+            <label>USUARIO</label>
+            <input
+              type="text"
+              className="login-input"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Ej: admin_papiweb"
+              autoFocus
+            />
+          </div>
           
-          <input
-            type="password"
-            className="login-input"
-            placeholder="Contraseña"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <div className="input-group">
+            <label>CONTRASEÑA</label>
+            <input
+              type="password"
+              className="login-input"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+            />
+          </div>
           
-          {error && <div className="login-error">{error}</div>}
+          {error && <div className="login-error-msg">⚠️ {error}</div>}
           
-          <button type="submit" className="login-button">
-            Ingresar al Sistema
+          <button type="submit" className="login-submit-btn title-rajdhani">
+            ESTABLECER CONEXIÓN
           </button>
         </form>
 
-        {/* Versión y créditos */}
-        <div className="login-footer mt-20">
-          <small className="text-muted">
-            PAPIWEB ACDM v2.4 Pro
-          </small>
+        <div className="login-footer">
+          <span>v2.4 PRO EDITION</span>
+          <span className="dot">•</span>
+          <span>SISTEMA EN LÍNEA</span>
         </div>
       </div>
     </div>

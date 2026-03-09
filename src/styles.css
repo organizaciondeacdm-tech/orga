@@ -2472,131 +2472,98 @@ body {
   background: #1e293b;
   box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
 }
-/* ===== LOGIN MEJORADO ===== */
-.login-container {
+/* Contenedor principal con fondo dinámico */
+.login-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
-  padding: 1rem;
+  background: var(--bg-primary);
+  position: relative;
+  overflow: hidden;
 }
 
+/* Decoración Hexagonal de fondo (opcional) */
+.login-bg-decoration {
+  position: absolute;
+  width: 150%;
+  height: 150%;
+  background-image: radial-gradient(var(--accent) 1px, transparent 1px);
+  background-size: 30px 30px;
+  opacity: 0.05;
+  transform: rotate(15deg);
+}
+
+/* La Tarjeta con Glassmorphism */
 .login-card {
-  background: var(--card-bg);
-  border-radius: var(--border-radius-lg);
-  padding: clamp(2rem, 5vw, 3rem);
   width: 100%;
   max-width: 400px;
-  box-shadow: var(--shadow-lg);
-  text-align: center;
+  background: var(--bg-card);
+  padding: 40px;
+  border-radius: 12px;
   border: 1px solid var(--border-color);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+  z-index: 10;
+  backdrop-filter: blur(10px);
 }
 
-/* Título PAPIWEB */
-.login-card h1 {
-  font-size: clamp(2rem, 5vw, 2.5rem);
-  font-weight: 800;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 0.5rem;
-  letter-spacing: 1px;
+.login-header { text-align: center; margin-bottom: 30px; }
+.login-icon { font-size: 3rem; margin-bottom: 10px; filter: drop-shadow(0 0 10px var(--accent)); }
+.login-header h1 { font-size: 2.2rem; letter-spacing: 2px; margin: 0; }
+.subtitle { font-size: 0.8rem; color: var(--text-muted); letter-spacing: 3px; }
+
+.input-group { margin-bottom: 20px; }
+.input-group label { 
+  display: block; 
+  font-size: 0.7rem; 
+  font-weight: 800; 
+  margin-bottom: 8px;
+  color: var(--accent);
 }
 
-/* Subtítulo SISTEMA ACDM - ¡CORREGIDO! */
-.login-card h2 {
-  font-size: clamp(1rem, 3vw, 1.2rem);
-  font-weight: 500;
-  color: var(--text-secondary); /* ← Usa la variable del tema */
-  margin-bottom: 2rem;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  border-bottom: 2px solid var(--primary-alpha);
-  padding-bottom: 1rem;
-  display: inline-block;
-}
-
-/* Versión con más contraste si prefieres */
-.login-card h2.high-contrast {
-  color: var(--text-primary); /* ← Máximo contraste */
-  font-weight: 600;
-  text-shadow: 0 1px 2px var(--shadow-color);
-}
-
-/* Inputs del login */
 .login-input {
   width: 100%;
-  padding: 1rem;
-  margin-bottom: 1rem;
+  padding: 12px 16px;
+  background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-md);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: 1rem;
-  transition: var(--transition);
+  color: var(--text-main);
+  border-radius: 6px;
+  font-family: inherit;
+  transition: all 0.3s;
 }
 
 .login-input:focus {
   outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-alpha);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
 }
 
-.login-input::placeholder {
-  color: var(--text-muted);
-}
-
-/* Botón de login */
-.login-button {
+.login-submit-btn {
   width: 100%;
-  padding: 1rem;
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  padding: 14px;
+  background: var(--accent);
   color: white;
   border: none;
-  border-radius: var(--border-radius-md);
-  font-size: 1rem;
-  font-weight: 600;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 1.1rem;
   cursor: pointer;
-  transition: var(--transition);
-  margin-top: 1rem;
+  transition: all 0.3s;
+  margin-top: 10px;
 }
 
-.login-button:hover {
+.login-submit-btn:hover {
+  filter: brightness(1.2);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-  filter: brightness(1.1);
+  box-shadow: 0 5px 15px rgba(37, 99, 235, 0.4);
 }
 
-/* Mensaje de error */
-.login-error {
-  color: var(--danger);
-  font-size: 0.875rem;
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  background: var(--danger-alpha, rgba(239, 68, 68, 0.1));
-  border-radius: var(--border-radius-sm);
-}
-
-/* Versión para tema oscuro */
-[data-theme="dark"] .login-card h2 {
-  color: var(--text-secondary);
-  border-bottom-color: var(--primary-alpha);
-}
-
-[data-theme="dark"] .login-card h2.high-contrast {
-  color: #ffffff; /* Blanco puro para máximo contraste en oscuro */
-  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
-
-/* Versión para tema claro */
-[data-theme="light"] .login-card h2 {
-  color: #2d3748; /* Color más oscuro para claro */
-  font-weight: 600;
-}
-
-/* Efecto de brillo opcional */
-.login-card h2.glow-effect {
-  text-shadow: 0 0 10px var(--primary-alpha);
+.login-footer {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
 }
